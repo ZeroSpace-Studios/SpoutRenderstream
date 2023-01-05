@@ -11,6 +11,7 @@
 #include "SpoutGL/SpoutReceiver.h"
 #include "renderstream.hpp"
 
+
 GLint toGlInternalFormat(RSPixelFormat format)
 {
     switch (format)
@@ -64,6 +65,11 @@ GLenum toGlType(RSPixelFormat format)
     default:
         throw std::runtime_error("Unhandled RS pixel format");
     }
+}
+
+float randomFloat()
+{
+    return (float)(rand()) / (float)(RAND_MAX);
 }
 
 int main() {
@@ -225,11 +231,11 @@ int main() {
     std::unordered_map<StreamHandle, RenderTarget> renderTargets;
 
 
+    int SpoutWidth = 0;
+    int SpoutHeight = 0;
+
     while (!glfwWindowShouldClose(window.get())) {
         glfwPollEvents();
-
-        int SpoutWidth = 0;
-        int SpoutHeight = 0;
 
                 if (sRecv.IsUpdated()) {
                     glBindTexture(GL_TEXTURE_2D, SpoutTarget.texture);
@@ -246,7 +252,7 @@ int main() {
                 }
                 //Need to create a spout specific texture to read into.
                 //Putting true in the function fixes the inverted texture display which I'm too much of a n00b to solve.
-                if (sRecv.ReceiveTexture(SpoutTarget.texture, GL_TEXTURE_2D, true)) {
+                if (sRecv.ReceiveTexture(SpoutTarget.texture, GL_TEXTURE_2D, false)) {
                     std::printf("frame received\n");
                 }
                 if (glGetError() != GL_NO_ERROR)
@@ -258,20 +264,21 @@ int main() {
 
 
                 //Copy from one framebuffer to another.
-
+                
                 glBindFramebuffer(GL_READ_FRAMEBUFFER, SpoutTarget.frameBuffer);
                 {
                     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); 
                     {
                         if (glGetError() != GL_NO_ERROR)
                             throw std::runtime_error("Failed to bind render target texture for stream");
-                        glBlitFramebuffer(0, 0, sRecv.GetSenderWidth(), sRecv.GetSenderHeight(), 0, 0, 1280, 720,
+                        glBlitFramebuffer(0, 0, SpoutWidth, SpoutHeight, 0, 0, 1280, 720,
                             GL_COLOR_BUFFER_BIT, GL_NEAREST);
                         if (glGetError() != GL_NO_ERROR)
                             throw std::runtime_error("Failed to bind render target texture for stream");
                     }
                 }
                 glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+                
 
                 //It works up to here
                
@@ -372,13 +379,23 @@ int main() {
 
                     {
 
-                        glFinish();
+
+                        const RenderTarget& target = renderTargets.at(description.handle);
+
+                        glBindFramebuffer(GL_FRAMEBUFFER, target.frameBuffer);
+                        {
+                            if (glGetError() != GL_NO_ERROR)
+                                throw std::runtime_error("Failed to bind xxx read fbo");
+                          //  glClear(GL_COLOR_BUFFER_BIT);
+                        }
+                        glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
                         glViewport(0, 0, SpoutWidth, SpoutHeight);
 
-                        const RenderTarget& target = renderTargets.at(description.handle);
+
+
                         //Set this back to 0
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, SpoutTarget.frameBuffer);
+                        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
                         {
                             if (glGetError() != GL_NO_ERROR)
                                 throw std::runtime_error("Failed to bind 1111 read fbo");
@@ -392,10 +409,11 @@ int main() {
                                     throw std::runtime_error("Failed to blit.");
                             }
                         }
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+                        glBindFramebuffer(GL_FRAMEBUFFER, 0);
                         if (glGetError() != GL_NO_ERROR)
                             throw std::runtime_error("Failed to bind 000 read fbo");
 
+                        glFinish();
 
                         SenderFrameTypeData data;
                         data.gl.texture = target.texture;
