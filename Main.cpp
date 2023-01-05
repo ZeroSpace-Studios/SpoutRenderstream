@@ -72,6 +72,8 @@ float randomFloat()
     return (float)(rand()) / (float)(RAND_MAX);
 }
 
+
+
 int main() {
 //    while (!::IsDebuggerPresent())
  //       ::Sleep(100);
@@ -230,9 +232,13 @@ int main() {
     //Generate Map for render targets.
     std::unordered_map<StreamHandle, RenderTarget> renderTargets;
 
-
+    //Set Height and Width For Receivers
     int SpoutWidth = 0;
     int SpoutHeight = 0;
+
+    //Need to add schema option to select sender.
+
+
 
     while (!glfwWindowShouldClose(window.get())) {
         glfwPollEvents();
@@ -395,7 +401,7 @@ int main() {
 
 
                         //Set this back to 0
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+                        glBindFramebuffer(GL_READ_FRAMEBUFFER, SpoutTarget.frameBuffer);
                         {
                             if (glGetError() != GL_NO_ERROR)
                                 throw std::runtime_error("Failed to bind 1111 read fbo");
