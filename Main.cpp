@@ -87,13 +87,12 @@ std::vector<std::string> getSpoutSenders(SpoutReceiver& sRecv) {
         char name[256];
         sRecv.GetSender(i, name);
         senders.push_back(std::string(name));
-        delete name;
+      //  delete name;
     }
     return senders;
 }
 
-ScopedSchema generateSchema(std::vector<std::string> senders) {
-    ScopedSchema schema;
+void generateSchema(std::vector<std::string> senders, ScopedSchema& schema) {
     schema.schema.scenes.nScenes = senders.size();
     //Change the below line to use a smart pointer
 
@@ -101,17 +100,19 @@ ScopedSchema generateSchema(std::vector<std::string> senders) {
     schema.schema.scenes.scenes = static_cast<RemoteParameters*>(malloc(schema.schema.scenes.nScenes * sizeof(RemoteParameters)));
 
     for (int i = 0; i < schema.schema.scenes.nScenes; i++) {
-        schema.schema.scenes.scenes[i].name = _strdup(senders[i].c_str());
-        schema.schema.scenes.scenes[i].nParameters = 0;
-        schema.schema.scenes.scenes[i].parameters = nullptr;
+        RemoteParameters rp = {
+            senders[i].c_str(),
+            0,
+            nullptr,
+        };
+        schema.schema.scenes.scenes[i] = rp;
     }
-    return schema;
 }
 
 int main(int argc, char* argv[])
 {
-    //    while (!::IsDebuggerPresent())
-    //       ::Sleep(100);
+       // while (!::IsDebuggerPresent())
+       //    ::Sleep(100);
 
     // Setup argpraeser
     argparse::ArgumentParser program("ZeroSpace SpoutBridge");
@@ -214,6 +215,7 @@ int main(int argc, char* argv[])
     if (!hc)
     {
         std::printf("Unable to get WGL Context\n");
+        //d3 logging rs_logToD3();
         return 1;
     }
 
@@ -310,7 +312,7 @@ int main(int argc, char* argv[])
 
         if (SenderNames.size() != Senders.size()) {
             SenderNames = Senders;
-            schema = generateSchema(SenderNames);
+            generateSchema(SenderNames, schema);
             rs.setSchema(&schema.schema);
         }
         if (sRecv.IsUpdated())
