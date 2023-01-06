@@ -109,6 +109,11 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema) {
     }
 }
 
+void PNL(const char* s){
+    std::printf("%s\n", s);
+    RS_LOG(s);
+}
+
 int main(int argc, char* argv[])
 {
        // while (!::IsDebuggerPresent())
@@ -126,7 +131,8 @@ int main(int argc, char* argv[])
         program.parse_args(argc, argv);
     }
     catch (const std::runtime_error& err) {
-        printf("Error: %s\n", err.what());
+        PNL(err.what());
+        std::printf("Error: %s\n", err.what());
         std::exit(1);
     }
     
@@ -333,7 +339,12 @@ int main(int argc, char* argv[])
         // Putting true in the function fixes the inverted texture display which I'm too much of a n00b to solve.
         if (sRecv.ReceiveTexture(SpoutTarget.texture, GL_TEXTURE_2D, false))
         {
+#ifdef DEBUG
             std::printf("frame received\n");
+            PNL("frame received")
+#else
+
+#endif
         }
         if (glGetError() != GL_NO_ERROR)
             throw std::runtime_error("Failed Receiving frame from spout.");
@@ -421,6 +432,7 @@ int main(int argc, char* argv[])
                 }
 
                 std::printf("Found %d Streams\n", header->nStreams);
+               // PNL(fmt::sprintf("Found %d Streams\n", header->nStreams))
                 continue;
             }
             else if (err == RS_ERROR_TIMEOUT)
@@ -438,6 +450,7 @@ int main(int argc, char* argv[])
         if (frameData.scene >= schema.schema.scenes.nScenes)
         {
             std::printf("Scene out of bounds\n");
+            PNL("Scene out of bounds");
             continue;
         }
         sRecv.SetReceiverName(SenderNames[frameData.scene].c_str());
