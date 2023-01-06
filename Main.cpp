@@ -11,6 +11,7 @@
 
 #include "SpoutGL/SpoutReceiver.h"
 #include "renderstream.hpp"
+#include "argparse.h"
 
 // TODO
 // Add cli args for stream name and window size
@@ -107,10 +108,16 @@ ScopedSchema generateSchema(std::vector<std::string> senders) {
     return schema;
 }
 
-int main()
+int main(argc, argv)
 {
     //    while (!::IsDebuggerPresent())
     //       ::Sleep(100);
+
+    // Setup argpraeser
+    argparse::Parser parser;
+
+    auto window_visibility = parser.AddFlag("windowed", 'w', "Render Visible Window")
+    
     // Setup receiver
     SpoutReceiver sRecv;
 
@@ -136,6 +143,13 @@ int main()
 
     // Makes the window all floaty and see-through.
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GL_TRUE);
+
+    //Control window visibility
+    if (window_visibility) {
+        glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+    } else {
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    }
 
     // A modern (and possibly messy) window pointer setup.
     // void(*)(GLFWwindow*) is a placeholder (any) type for the last arguments which is what will be called when the pointer needs to be released.
