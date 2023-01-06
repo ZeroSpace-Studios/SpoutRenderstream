@@ -92,7 +92,7 @@ std::vector<std::string> getSpoutSenders(SpoutReceiver& sRecv) {
     return senders;
 }
 
-void generateSchema(std::vector<std::string> senders, ScopedSchema& schema) {
+void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema) {
     schema.schema.scenes.nScenes = senders.size();
     //Change the below line to use a smart pointer
 
