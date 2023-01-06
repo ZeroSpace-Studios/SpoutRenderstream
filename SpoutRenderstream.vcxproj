@@ -136,6 +136,7 @@
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="argparse.hpp" />
     <ClInclude Include="d3helpers.hpp" />
     <ClInclude Include="d3renderstream.h" />
     <ClInclude Include="renderstream.hpp" />

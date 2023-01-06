@@ -4,6 +4,8 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define GLFW_EXPOSE_NATIVE_WGL
 
+#define NOMINMAX
+
 #include <GLFW/glfw3native.h>
 #include <cstdio>
 #include <memory>
@@ -11,7 +13,7 @@
 
 #include "SpoutGL/SpoutReceiver.h"
 #include "renderstream.hpp"
-#include "argparse.h"
+#include "argparse.hpp"
 
 // TODO
 // Add cli args for stream name and window size
@@ -78,48 +80,58 @@ float randomFloat()
     return (float)(rand()) / (float)(RAND_MAX);
 }
 
-std::vector<std::string> getSpoutSenders() {
-    int c = Spout::GetSenderCount();
+std::vector<std::string> getSpoutSenders(SpoutReceiver& sRecv) {
+    int c = sRecv.GetSenderCount();
     std::vector<std::string> senders;
     for (int i = 0; i < c; i++) {
         char name[256];
-        Spout::GetSenderName(i, name);
+        sRecv.GetSender(i, name);
         senders.push_back(std::string(name));
+        delete name;
     }
     return senders;
 }
 
 ScopedSchema generateSchema(std::vector<std::string> senders) {
     ScopedSchema schema;
-    schema.schema.engineName = "ZSSpoutBridge";
-    scoped.schema.engineVersion = _strdup(("RS" + std::to_string(RENDER_STREAM_VERSION_MAJOR) + "." + std::to_string(RENDER_STREAM_VERSION_MINOR)).c_str());
-    scoped.schema.info = _strdup("");
-    scoped.schema.scenes.nScenes = senders.size();
+    schema.schema.scenes.nScenes = senders.size();
     //Change the below line to use a smart pointer
 
 
-    scoped.schema.scenes.scenes = static_cast<RemoteParameters*>(malloc(scoped.schema.scenes.nScenes * sizeof(RemoteParameters)));
+    schema.schema.scenes.scenes = static_cast<RemoteParameters*>(malloc(schema.schema.scenes.nScenes * sizeof(RemoteParameters)));
 
-    for (int i = 0; i < scoped.schema.scenes.nScenes; i++) {
-        scoped.schema.scenes.scenes[i].name = _strdup(senders[i].c_str());
-        scoped.schema.scenes.scenes[i].nParameters = 0;
-        scoped.schema.scenes.scenes[i].parameters = nullptr;
+    for (int i = 0; i < schema.schema.scenes.nScenes; i++) {
+        schema.schema.scenes.scenes[i].name = _strdup(senders[i].c_str());
+        schema.schema.scenes.scenes[i].nParameters = 0;
+        schema.schema.scenes.scenes[i].parameters = nullptr;
     }
     return schema;
 }
 
-int main(argc, argv)
+int main(int argc, char* argv[])
 {
     //    while (!::IsDebuggerPresent())
     //       ::Sleep(100);
 
     // Setup argpraeser
-    argparse::Parser parser;
+    argparse::ArgumentParser program("ZeroSpace SpoutBridge");
 
-    auto window_visibility = parser.AddFlag("windowed", 'w', "Render Visible Window")
+
+    program.add_argument("--windowed", "-w").help("Render Visible Window")
+        .default_value(false)
+        .implicit_value(true);
+
+    try {
+        program.parse_args(argc, argv);
+    }
+    catch (const std::runtime_error& err) {
+        printf("Error: %s\n", err.what());
+        std::exit(1);
+    }
     
     // Setup receiver
     SpoutReceiver sRecv;
+
 
     // Setup Opengl
 
@@ -145,7 +157,7 @@ int main(argc, argv)
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GL_TRUE);
 
     //Control window visibility
-    if (window_visibility) {
+    if (program["--windowed"] == true) {
         glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
     } else {
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
@@ -294,12 +306,12 @@ int main(argc, argv)
 
         glfwPollEvents();
 
-        Senders = getSpoutSenders();
+        std::vector<std::string> Senders = getSpoutSenders(sRecv);
 
         if (SenderNames.size() != Senders.size()) {
             SenderNames = Senders;
-            schema = generateSchema();
-            rs.setSchema(schema.schema);
+            schema = generateSchema(SenderNames);
+            rs.setSchema(&schema.schema);
         }
         if (sRecv.IsUpdated())
         {
@@ -421,7 +433,7 @@ int main(argc, argv)
         }
 
         const FrameData &frameData = std::get<FrameData>(awaitResult);
-        if (frameData.scene >= scoped.schema.scenes.nScenes)
+        if (frameData.scene >= schema.schema.scenes.nScenes)
         {
             std::printf("Scene out of bounds\n");
             continue;
