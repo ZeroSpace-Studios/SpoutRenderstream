@@ -603,6 +603,13 @@ int main(int argc, char* argv[])
                 }
                 glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+                //This may cause a breaking change
+
+                glClearColor(0.f, 0.f, 0.f, 0.f);
+                glClear(GL_COLOR_BUFFER_BIT);
+
+                // Here
+                
                 glViewport(0, 0, SpoutWidth, SpoutHeight);
 
                 // Set this back to 0
