@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "SpoutGL/SpoutReceiver.h"
+#include "SpoutGL/SpoutSender.h"
 #include "renderstream.hpp"
 #include "argparse.hpp"
 
@@ -97,7 +98,11 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema) {
     //Change the below line to use a smart pointer
 
 
-    schema.schema.scenes.scenes = static_cast<RemoteParameters*>(malloc(schema.schema.scenes.nScenes * sizeof(RemoteParameters)));
+    schema.schema.scenes.scenes = static_cast<RemoteParameters*>(
+        malloc(
+            schema.schema.scenes.nScenes * sizeof(RemoteParameters)
+        )
+    );
 
     for (int i = 0; i < schema.schema.scenes.nScenes; i++) {
         RemoteParameters rp = {
@@ -106,12 +111,83 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema) {
             nullptr,
         };
         schema.schema.scenes.scenes[i] = rp;
+        schema.schema.scenes.scenes[i].nParameters = 1;
+        schema.schema.scenes.scenes[i].parameters = static_cast<RemoteParameters*>(
+            malloc(
+                scoped.schema.scenes.scenes[i].nParameters * sizeof(RemoteParameter)
+            )
+        )
+        RemoteParameter par = {
+            "Input",
+            "SpoutSource",
+            "spout_input",
+            RS_PARAMETER_IMAGE,
+            nullptr, //This may not be coreect for RemoteParameterTypeDefaults
+            0,
+            nullptr,
+            -1,
+            RS_DMX_16_BE,
+            REMOTEPARAMETER_NO_FLAGS
+        }
+
+        schema.schema.scenes.scenes[i].parameters[0] = par;
     }
 }
 
 void PNL(const char* s){
     std::printf("%s\n", s);
     RS_LOG(s);
+}
+
+void generateGlTexture(RenderTarget &target, const int width, const int height) {
+    //Generate opengl texture and frame buffer
+    glGenTextures(1, &target.texture);
+    if (glGetError() != GL_NO_ERROR)
+        throw std::runtime_error("Failed to generate render target texture for stream");
+
+    glBindTexture(GL_TEXTURE_2D, target.texture);
+    {
+        if (glGetError() != GL_NO_ERROR)
+            throw std::runtime_error("Failed to bind render target texture for stream");
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+        if (glGetError() != GL_NO_ERROR)
+            throw std::runtime_error("Failed to setup render target texture parameters");
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        if (glGetError() != GL_NO_ERROR)
+            throw std::runtime_error("Failed to create render target texture for stream");
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenFramebuffers(1, &target.frameBuffer);
+    if (glGetError() != GL_NO_ERROR)
+        throw std::runtime_error("Failed to create render target framebuffer for stream");
+
+    glBindFramebuffer(GL_FRAMEBUFFER, target.frameBuffer);
+    {
+        if (glGetError() != GL_NO_ERROR)
+            throw std::runtime_error("Failed to bind render target framebuffer for stream");
+
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target.texture, 0);
+        if (glGetError() != GL_NO_ERROR)
+            throw std::runtime_error("Failed to attach render target texture for stream");
+
+        GLenum buffers[] = {GL_COLOR_ATTACHMENT0};
+        glDrawBuffers(1, buffers);
+        if (glGetError() != GL_NO_ERROR)
+            throw std::runtime_error("Failed to set draw buffers for stream");
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            throw std::runtime_error("Failed fame buffer status check");
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 }
 
 int main(int argc, char* argv[])
@@ -139,6 +215,9 @@ int main(int argc, char* argv[])
     // Setup receiver
     SpoutReceiver sRecv;
 
+    //Setup Sender
+    SpoutSender sSend;
+    sSend.SetSenderName("RenderStream");
 
     // Setup Opengl
 
@@ -249,6 +328,10 @@ int main(int argc, char* argv[])
     // Create the spout specific rendertarget.
     RenderTarget SpoutTarget;
 
+    // Set Height and Width For Receivers
+    int SpoutWidth = 0;
+    int SpoutHeight = 0;
+
     // Prepare texture for spout receiver
     glGenTextures(1, &SpoutTarget.texture);
     if (glGetError() != GL_NO_ERROR)
@@ -300,9 +383,12 @@ int main(int argc, char* argv[])
     // Generate Map for render targets.
     std::unordered_map<StreamHandle, RenderTarget> renderTargets;
 
-    // Set Height and Width For Receivers
-    int SpoutWidth = 0;
-    int SpoutHeight = 0;
+    // Spout Incoming texture target
+    RenderTarget SpoutIncomingTarget;
+
+    // Set Height and Width For Incoming target;
+    int SpoutIncomingWidth = 0;
+    int SpoutIncomingHeight = 0;
 
 
     std::vector<std::string> SenderNames;
@@ -454,6 +540,36 @@ int main(int argc, char* argv[])
             continue;
         }
         sRecv.SetReceiverName(SenderNames[frameData.scene].c_str());
+
+        //Handle receiving texture
+
+        const auto& scene = scoped.schema.scenes.scenes[frameData.scene];
+        ParameterValues values = rs.getFrameParameters(scene);
+
+        ImageFrameData image = values.get<ImageFrameData>("spout_input");
+        if (SpoutIncomingWidth != image.width || SpoutIncomingHeight != image.height)
+        {
+            generateGlTexture(SpoutIncomingTarget, image.width, image.height);
+            SpoutIncomingWidth = image.width;
+            SpoutIncomingHeight = image.height;  
+        }
+
+        SenderFrameTypeData Idata;
+
+        Idata.gl.texture = SpoutIncomingTarget.texture;
+
+        rs.getFrameImage(image.imageId, RS_FRAMETYPE_OPENGL_TEXTURE, data);
+
+        //Need to setup spout sender.
+
+        sSend.SendTexture(
+            Idata.gl.texture,
+            GL_TEXTURE_2D,
+            SpoutIncomingWidth,
+            SpoutIncomingHeight,
+            false
+        );
+
 
         const size_t numStreams = header ? header->nStreams : 0;
         for (size_t i = 0; i < numStreams; ++i)
