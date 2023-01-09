@@ -560,7 +560,7 @@ int main(int argc, char* argv[])
 
         rs.getFrameImage(image.imageId, RS_FRAMETYPE_OPENGL_TEXTURE, data);
 
-        //Need to setup spout sender.
+        //Ideally thise should operate in a separate thread.
 
         sSend.SendTexture(
             Idata.gl.texture,
@@ -609,7 +609,7 @@ int main(int argc, char* argv[])
                 glClear(GL_COLOR_BUFFER_BIT);
 
                 // Here
-                
+
                 glViewport(0, 0, SpoutWidth, SpoutHeight);
 
                 // Set this back to 0
