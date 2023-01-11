@@ -21,6 +21,13 @@
 // Add a way to get the stream name from the sender
 // Add a scoped schema for renderstream
 
+typedef struct RenderTarget
+{
+    GLuint texture;
+    GLuint frameBuffer;
+} RenderTarget;
+
+
 GLint toGlInternalFormat(RSPixelFormat format)
 {
     switch (format)
@@ -76,6 +83,8 @@ GLenum toGlType(RSPixelFormat format)
     }
 }
 
+
+
 float randomFloat()
 {
     return (float)(rand()) / (float)(RAND_MAX);
@@ -92,6 +101,7 @@ std::vector<std::string> getSpoutSenders(SpoutReceiver& sRecv) {
     }
     return senders;
 }
+
 
 void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema) {
     schema.schema.scenes.nScenes = senders.size();
@@ -112,34 +122,28 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema) {
         };
         schema.schema.scenes.scenes[i] = rp;
         schema.schema.scenes.scenes[i].nParameters = 1;
-        schema.schema.scenes.scenes[i].parameters = static_cast<RemoteParameters*>(
+        schema.schema.scenes.scenes[i].parameters = static_cast<RemoteParameter*>(
             malloc(
-                scoped.schema.scenes.scenes[i].nParameters * sizeof(RemoteParameter)
+                schema.schema.scenes.scenes[i].nParameters * sizeof(RemoteParameter)
             )
-        )
-        RemoteParameter par = {
-            "Input",
-            "SpoutSource",
-            "spout_input",
-            RS_PARAMETER_IMAGE,
-            nullptr, //This may not be coreect for RemoteParameterTypeDefaults
-            0,
-            nullptr,
-            -1,
-            RS_DMX_16_BE,
-            REMOTEPARAMETER_NO_FLAGS
-        }
-
+            );
+        RemoteParameterTypeDefaults defaults;
+        RemoteParameter par;
+        par.group = "Input";
+        par.displayName = "SpoutSource";
+        par.key = "spout_input";
+        par.type = RS_PARAMETER_IMAGE;
+        par.nOptions = 0;
+        par.options = nullptr;
+        par.dmxOffset = -1;
+        par.dmxType = RS_DMX_16_BE;
+        par.flags = REMOTEPARAMETER_NO_FLAGS;
         schema.schema.scenes.scenes[i].parameters[0] = par;
-    }
+    };
 }
 
-void PNL(const char* s){
-    std::printf("%s\n", s);
-    RS_LOG(s);
-}
 
-void generateGlTexture(RenderTarget &target, const int width, const int height) {
+void generateGlTexture(RenderTarget& target, const int width, const int height) {
     //Generate opengl texture and frame buffer
     glGenTextures(1, &target.texture);
     if (glGetError() != GL_NO_ERROR)
@@ -178,7 +182,7 @@ void generateGlTexture(RenderTarget &target, const int width, const int height) 
         if (glGetError() != GL_NO_ERROR)
             throw std::runtime_error("Failed to attach render target texture for stream");
 
-        GLenum buffers[] = {GL_COLOR_ATTACHMENT0};
+        GLenum buffers[] = { GL_COLOR_ATTACHMENT0 };
         glDrawBuffers(1, buffers);
         if (glGetError() != GL_NO_ERROR)
             throw std::runtime_error("Failed to set draw buffers for stream");
@@ -190,10 +194,11 @@ void generateGlTexture(RenderTarget &target, const int width, const int height) 
 
 }
 
+
 int main(int argc, char* argv[])
 {
-       // while (!::IsDebuggerPresent())
-       //    ::Sleep(100);
+        while (!::IsDebuggerPresent())
+           ::Sleep(100);
 
     // Setup argpraeser
     argparse::ArgumentParser program("ZeroSpace SpoutBridge");
@@ -207,7 +212,7 @@ int main(int argc, char* argv[])
         program.parse_args(argc, argv);
     }
     catch (const std::runtime_error& err) {
-        PNL(err.what());
+        //PNL(err.what());
         std::printf("Error: %s\n", err.what());
         std::exit(1);
     }
@@ -319,11 +324,6 @@ int main(int argc, char* argv[])
 
     // Sets up the rendertarget structs for RS.
     // Once a texture is tied to an fbo, you basically only work on the fbo from that point on.
-    struct RenderTarget
-    {
-        GLuint texture;
-        GLuint frameBuffer;
-    };
 
     // Create the spout specific rendertarget.
     RenderTarget SpoutTarget;
@@ -536,14 +536,14 @@ int main(int argc, char* argv[])
         if (frameData.scene >= schema.schema.scenes.nScenes)
         {
             std::printf("Scene out of bounds\n");
-            PNL("Scene out of bounds");
+         //   PNL("Scene out of bounds");
             continue;
         }
         sRecv.SetReceiverName(SenderNames[frameData.scene].c_str());
 
         //Handle receiving texture
 
-        const auto& scene = scoped.schema.scenes.scenes[frameData.scene];
+        const auto& scene = schema.schema.scenes.scenes[frameData.scene];
         ParameterValues values = rs.getFrameParameters(scene);
 
         ImageFrameData image = values.get<ImageFrameData>("spout_input");
@@ -558,7 +558,7 @@ int main(int argc, char* argv[])
 
         Idata.gl.texture = SpoutIncomingTarget.texture;
 
-        rs.getFrameImage(image.imageId, RS_FRAMETYPE_OPENGL_TEXTURE, data);
+        rs.getFrameImage(image.imageId, RS_FRAMETYPE_OPENGL_TEXTURE, Idata);
 
         //Ideally thise should operate in a separate thread.
 
