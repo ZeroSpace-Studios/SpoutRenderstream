@@ -2,7 +2,9 @@
 
 #include "d3renderstream.h"
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #define NOMINMAX
 
 #include <windows.h>
@@ -89,7 +91,7 @@ public:
 
     inline CameraData getFrameCamera(StreamHandle stream);
 
-    inline void sendFrame(StreamHandle stream, SenderFrameType type, SenderFrameTypeData data, const CameraResponseData* response);
+    inline void sendFrame(StreamHandle stream, SenderFrameType type, SenderFrameTypeData data, const FrameResponseData* response);
 
     inline void setNewStatusMessage(const char* message);
 
@@ -305,7 +307,7 @@ CameraData RenderStream::getFrameCamera(StreamHandle stream)
     return out;
 }
 
-void RenderStream::sendFrame(StreamHandle stream, SenderFrameType frameType, SenderFrameTypeData frameData, const CameraResponseData* response)
+void RenderStream::sendFrame(StreamHandle stream, SenderFrameType frameType, SenderFrameTypeData frameData, const FrameResponseData* response)
 {
     checkRs(m_sendFrame(stream, frameType, frameData, response), __FUNCTION__);
 }
@@ -389,6 +391,10 @@ ParameterValues::ParameterValues(RenderStream& rs, const RemoteParameters& scene
     for (uint32_t iParam = 0; iParam < m_parameters->nParameters; ++iParam)
     {
         const RemoteParameter& param = m_parameters->parameters[iParam];
+
+        if (param.flags & REMOTEPARAMETER_READ_ONLY)
+            continue;
+
         if (param.type == RS_PARAMETER_NUMBER)
             nFloats++;
         else if (param.type == RS_PARAMETER_IMAGE)
@@ -416,6 +422,10 @@ std::tuple<size_t, RemoteParameterType> ParameterValues::iKey(const std::string&
     for (uint32_t iParam = 0; iParam < m_parameters->nParameters; ++iParam)
     {
         const RemoteParameter& param = m_parameters->parameters[iParam];
+
+        if (param.flags & REMOTEPARAMETER_READ_ONLY)
+            continue;
+
         if (key == param.key)
         {
             if (param.type == RS_PARAMETER_NUMBER)
