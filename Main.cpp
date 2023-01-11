@@ -513,9 +513,12 @@ int main(int argc, char* argv[])
                 SenderFrameTypeData data;
                 data.gl.texture = target.texture;
 
+                FrameResponseData response = {};
+                response.cameraData = &cameraData;
+
                 // Send the frame to renderstream
                 // I would hope this would generate some form of error, but it doesn't.
-                rs.sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &cameraData);
+                rs.sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &response);
             }
         }
 
