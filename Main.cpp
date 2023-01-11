@@ -96,6 +96,9 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema) {
     schema.schema.scenes.nScenes = senders.size();
     //Change the below line to use a smart pointer
 
+    schema.schema.engineName = "SpoutRenderStream";
+    schema.schema.engineVersion = "1.30";
+    schema.schema.info = "";
 
     schema.schema.scenes.scenes = static_cast<RemoteParameters*>(malloc(schema.schema.scenes.nScenes * sizeof(RemoteParameters)));
 
@@ -116,8 +119,8 @@ void PNL(const char* s){
 
 int main(int argc, char* argv[])
 {
-       // while (!::IsDebuggerPresent())
-       //    ::Sleep(100);
+      // while (!::IsDebuggerPresent())
+      //    ::Sleep(100);
 
     // Setup argpraeser
     argparse::ArgumentParser program("ZeroSpace SpoutBridge");
