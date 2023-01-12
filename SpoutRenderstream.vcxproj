@@ -71,10 +71,10 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)\build\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)\build\$(Platform)\$(branch)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)\build\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)\build\$(Platform)\$(branch)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -121,7 +121,7 @@
       <AdditionalDependencies>Spout.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(SolutionDir)Spout.dll $(SolutionDir)build\$(Platform)\$(Configuration)\Spout.dll</Command>
+      <Command>copy $(SolutionDir)Spout.dll $(SolutionDir)build\$(Platform)\$(branch)\$(Configuration)\Spout.dll</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -141,6 +141,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>Spout.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy $(SolutionDir)Spout.dll $(SolutionDir)build\$(Platform)\$(branch)\$(Configuration)\Spout.dll</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Main.cpp" />
