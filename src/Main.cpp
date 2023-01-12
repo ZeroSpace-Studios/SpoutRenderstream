@@ -107,9 +107,6 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema) {
     schema.schema.scenes.nScenes = senders.size();
     //Change the below line to use a smart pointer
 
-    schema.schema.engineName = "SpoutRenderStream";
-    schema.schema.engineVersion = "1.30";
-    schema.schema.info = "";
 
     schema.schema.scenes.scenes = static_cast<RemoteParameters*>(
         malloc(
@@ -653,12 +650,10 @@ int main(int argc, char* argv[])
                 SenderFrameTypeData data;
                 data.gl.texture = target.texture;
 
-                FrameResponseData response = {};
-                response.cameraData = &cameraData;
 
                 // Send the frame to renderstream
                 // I would hope this would generate some form of error, but it doesn't.
-                rs.sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &response);
+                rs.sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &cameraData);
             }
         }
 
