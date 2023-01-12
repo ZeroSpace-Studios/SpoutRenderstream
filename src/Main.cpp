@@ -11,9 +11,9 @@
 #include <memory>
 #include <vector>
 
-#include "SpoutGL/SpoutReceiver.h"
-#include "SpoutGL/SpoutSender.h"
-#include "renderstream.hpp"
+#include "../SpoutGL/SpoutReceiver.h"
+#include "../SpoutGL/SpoutSender.h"
+#include "../includes/renderstream.hpp"
 #include "argparse.hpp"
 
 // TODO
