@@ -140,13 +140,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="src\Main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="argparse.hpp" />
-    <ClInclude Include="d3helpers.hpp" />
-    <ClInclude Include="d3renderstream.h" />
-    <ClInclude Include="renderstream.hpp" />
+    <ClInclude Include="includes\d3helpers.hpp" />
+    <ClInclude Include="includes\d3renderstream.h" />
+    <ClInclude Include="includes\renderstream.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
