@@ -146,7 +146,7 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema) {
 }
 
 
-void generateGlTexture(RenderTarget& target, const int width, const int height) {
+void generateGlTexture(RenderTarget& target, const int width, const int height, RSPixelFormat format) {
     //Generate opengl texture and frame buffer
     glGenTextures(1, &target.texture);
     if (glGetError() != GL_NO_ERROR)
@@ -163,18 +163,20 @@ void generateGlTexture(RenderTarget& target, const int width, const int height) 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-
+        
+        //May no longer be needed.
+        /*
         GLint const Swizzle[] = { GL_BLUE, GL_GREEN, GL_RED, GL_ALPHA };
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, Swizzle[0]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, Swizzle[1]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, Swizzle[2]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, Swizzle[3]);
-
+        */
 
         if (glGetError() != GL_NO_ERROR)
             throw std::runtime_error("Failed to setup render target texture parameters");
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, toGlInternalFormat(format), width, height, 0, toGlFormat(format), toGlType(format), nullptr);
         if (glGetError() != GL_NO_ERROR)
             throw std::runtime_error("Failed to create render target texture for stream");
     }
@@ -342,6 +344,10 @@ int main(int argc, char* argv[])
     // Set Height and Width For Receivers
     int SpoutWidth = 0;
     int SpoutHeight = 0;
+
+    //Cleaner Implmentation
+
+	//generateGlTexture(SpoutTarget, SpoutWidth, SpoutHeight, RS_FMT_RGBA32F);
 
     // Prepare texture for spout receiver
     glGenTextures(1, &SpoutTarget.texture);
@@ -560,7 +566,7 @@ int main(int argc, char* argv[])
         ImageFrameData image = values.get<ImageFrameData>("spout_input");
         if (SpoutIncomingWidth != image.width || SpoutIncomingHeight != image.height)
         {
-            generateGlTexture(SpoutIncomingTarget, image.width, image.height);
+			generateGlTexture(SpoutIncomingTarget, image.width, image.height, image.format);
             SpoutIncomingWidth = image.width;
             SpoutIncomingHeight = image.height;  
         }
