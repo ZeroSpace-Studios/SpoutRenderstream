@@ -29,5 +29,8 @@
     <ClInclude Include="renderstream.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="argparse.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
