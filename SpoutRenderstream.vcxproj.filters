@@ -15,21 +15,21 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Main.cpp">
+    <ClCompile Include="src\Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="d3helpers.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="d3renderstream.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="renderstream.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="argparse.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\d3helpers.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\d3renderstream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\renderstream.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
