@@ -83,7 +83,10 @@ GLenum toGlType(RSPixelFormat format)
     }
 }
 
-
+struct free_delete
+{
+    void operator()(void* x) { free(x); };
+};
 
 float randomFloat()
 {
@@ -120,13 +123,21 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema) {
             0,
             nullptr,
         };
+
+       // Not currently working.
+	//	std::shared_ptr<RemoteParameter> rpPtr ((RemoteParameter*)malloc(schema.schema.scenes.scenes[i].nParameters * sizeof(RemoteParameter)), free_delete());
+
         schema.schema.scenes.scenes[i] = rp;
         schema.schema.scenes.scenes[i].nParameters = 1;
+        
         schema.schema.scenes.scenes[i].parameters = static_cast<RemoteParameter*>(
             malloc(
                 schema.schema.scenes.scenes[i].nParameters * sizeof(RemoteParameter)
             )
             );
+           
+        
+        //schema.schema.scenes.scenes[i].parameters = rpPtr.get();
         RemoteParameterTypeDefaults defaults;
         RemoteParameter par;
         par.group = "Input";
@@ -249,8 +260,8 @@ int main(int argc, char* argv[])
     }
 
     // Set Opengl Versions (P.S. If you accidentally put two of these like I did you will get a very strange read access error or something IDK)
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
@@ -264,7 +275,7 @@ int main(int argc, char* argv[])
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     }
 
-    // A modern (and possibly messy) window pointer setup.
+    // A modern window pointer setup.
     // void(*)(GLFWwindow*) is a placeholder (any) type for the last arguments which is what will be called when the pointer needs to be released.
     std::unique_ptr<GLFWwindow, void (*)(GLFWwindow *)> window(glfwCreateWindow(1280, 720, "ZeroSpace SpoutBridge (Non-Commerical)", nullptr, nullptr), glfwDestroyWindow);
 
