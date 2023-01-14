@@ -109,7 +109,7 @@ std::vector<std::string> getSpoutSenders(SpoutReceiver& sRecv) {
 }
 
 
-void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema) {
+void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema, bool genInputs) {
     schema.schema.scenes.nScenes = senders.size();
     //Change the below line to use a smart pointer
 
@@ -130,29 +130,33 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema) {
             nullptr,
         };
         schema.schema.scenes.scenes[i] = rp;
-        schema.schema.scenes.scenes[i].nParameters = 1;
-        schema.schema.scenes.scenes[i].parameters = static_cast<RemoteParameter*>(
-            malloc(
-                schema.schema.scenes.scenes[i].nParameters * sizeof(RemoteParameter)
-            )
-            );
-       
-		//std::shared_ptr<RemoteParameter> param (static_cast<RemoteParameter*>(malloc(schema.schema.scenes.scenes[i].nParameters * sizeof(RemoteParameter))), free_delete());
-        
-       // schema.schema.scenes.scenes[i].parameters = std::move(param.get());
-        
-        RemoteParameterTypeDefaults defaults;
-        RemoteParameter par;
-        par.group = "Input";
-        par.displayName = "SpoutSource";
-        par.key = "spout_input";
-        par.type = RS_PARAMETER_IMAGE;
-        par.nOptions = 0;
-        par.options = nullptr;
-        par.dmxOffset = -1;
-        par.dmxType = RS_DMX_16_BE;
-        par.flags = REMOTEPARAMETER_NO_FLAGS;
-        schema.schema.scenes.scenes[i].parameters[0] = par;
+
+        if (genInputs)
+        {
+            schema.schema.scenes.scenes[i].nParameters = 1;
+            schema.schema.scenes.scenes[i].parameters = static_cast<RemoteParameter*>(
+                malloc(
+                    schema.schema.scenes.scenes[i].nParameters * sizeof(RemoteParameter)
+                )
+                );
+
+            //std::shared_ptr<RemoteParameter> param (static_cast<RemoteParameter*>(malloc(schema.schema.scenes.scenes[i].nParameters * sizeof(RemoteParameter))), free_delete());
+
+           // schema.schema.scenes.scenes[i].parameters = std::move(param.get());
+
+            RemoteParameterTypeDefaults defaults;
+            RemoteParameter par;
+            par.group = "Input";
+            par.displayName = "SpoutSource";
+            par.key = "spout_input";
+            par.type = RS_PARAMETER_IMAGE;
+            par.nOptions = 0;
+            par.options = nullptr;
+            par.dmxOffset = -1;
+            par.dmxType = RS_DMX_16_BE;
+            par.flags = REMOTEPARAMETER_NO_FLAGS;
+            schema.schema.scenes.scenes[i].parameters[0] = par;
+        }
     };
 }
 
@@ -221,8 +225,8 @@ void generateGlTexture(RenderTarget& target, const int width, const int height, 
 
 int main(int argc, char* argv[])
 {
-     while (!::IsDebuggerPresent())
-        ::Sleep(100);
+   //  while (!::IsDebuggerPresent())
+    //    ::Sleep(100);
 
 
   // Setup argpraeser
@@ -236,6 +240,10 @@ int main(int argc, char* argv[])
     program.add_argument("--remove_sender_names", "-r").help("Sets the default behavior to remove sender names from the list of available senders.")
         .default_value(false)
         .implicit_value(true);
+
+    program.add_argument("--inputs", "-i").help("Presents a texture input from disguise as a RenderStream Spout source.")
+		.default_value(false)
+		.implicit_value(true);
 
     try {
         program.parse_args(argc, argv);
@@ -287,12 +295,15 @@ int main(int argc, char* argv[])
 
     }
 
-
     bool isRemoveSenders = false;
     if (program["--remove_sender_names"] == true) {
         isRemoveSenders = true;
     }
 
+	bool isInput = false;
+    if (program["--inputs"] == true) {
+		isInput = true;
+    }
 
 
     // A modern (and possibly messy) window pointer setup.
@@ -473,7 +484,7 @@ int main(int argc, char* argv[])
                     }
                 }
                 // SenderNames = Senders;
-                generateSchema(SenderNames, schema);
+                generateSchema(SenderNames, schema, isInput);
                 rs.setSchema(&schema.schema);
                 rs.saveSchema(argv[0], &schema.schema);
             }
@@ -531,9 +542,6 @@ int main(int argc, char* argv[])
             }
 
 
-
-            // It works up to here
-
             // Delete this block if it breaks
             // Handle sending the frame to renderstream.
             auto awaitResult = rs.awaitFrameData(5000);
@@ -549,49 +557,7 @@ int main(int argc, char* argv[])
                     {
                         const StreamDescription& description = header->streams[i];
                         RenderTarget& target = renderTargets[description.handle];
-                        glGenTextures(1, &target.texture);
-                        if (glGetError() != GL_NO_ERROR)
-                            throw std::runtime_error("Failed to generate render target texture for stream");
-
-                        glBindTexture(GL_TEXTURE_2D, target.texture);
-                        if (glGetError() != GL_NO_ERROR)
-                            throw std::runtime_error("Failed to bind render target texture for stream");
-
-                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-                        if (glGetError() != GL_NO_ERROR)
-                            throw std::runtime_error("Failed to setup render target texture parameters for stream");
-
-                        glTexImage2D(GL_TEXTURE_2D, 0, toGlInternalFormat(description.format), description.width, description.height, 0, toGlFormat(description.format), toGlType(description.format), nullptr);
-                        if (glGetError() != GL_NO_ERROR)
-                            throw std::runtime_error("Failed to create render target texture for stream");
-                        glBindTexture(GL_TEXTURE_2D, 0);
-
-                        glGenFramebuffers(1, &target.frameBuffer);
-                        if (glGetError() != GL_NO_ERROR)
-                            throw std::runtime_error("Failed to create render target framebuffer for stream");
-
-                        glBindFramebuffer(GL_FRAMEBUFFER, target.frameBuffer);
-                        if (glGetError() != GL_NO_ERROR)
-                            throw std::runtime_error("Failed to bind render target framebuffer for stream");
-
-                        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target.texture, 0);
-                        if (glGetError() != GL_NO_ERROR)
-                            throw std::runtime_error("Failed to attach render target texture for stream");
-
-                        GLenum buffers[] = { GL_COLOR_ATTACHMENT0 };
-                        glDrawBuffers(1, buffers);
-                        if (glGetError() != GL_NO_ERROR)
-                            throw std::runtime_error("Failed to set draw buffers for stream");
-
-                        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-                            throw std::runtime_error("Failed fame buffer status check");
-
-                        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+						generateGlTexture(target, description.width, description.height, description.format);
                     }
 
                     std::printf("Found %d Streams\n", header->nStreams);
@@ -620,33 +586,36 @@ int main(int argc, char* argv[])
 
             //Handle receiving texture
 
-            const auto& scene = schema.schema.scenes.scenes[frameData.scene];
-            ParameterValues values = rs.getFrameParameters(scene);
+            if (isInput) {
+                //Should move this to another thread.
 
-            ImageFrameData image = values.get<ImageFrameData>("spout_input");
-            if (SpoutIncomingWidth != image.width || SpoutIncomingHeight != image.height)
-            {
-                generateGlTexture(SpoutIncomingTarget, image.width, image.height, image.format);
-                SpoutIncomingWidth = image.width;
-                SpoutIncomingHeight = image.height;
+                const auto& scene = schema.schema.scenes.scenes[frameData.scene];
+                ParameterValues values = rs.getFrameParameters(scene);
+
+                ImageFrameData image = values.get<ImageFrameData>("spout_input");
+                if (SpoutIncomingWidth != image.width || SpoutIncomingHeight != image.height)
+                {
+                    generateGlTexture(SpoutIncomingTarget, image.width, image.height, image.format);
+                    SpoutIncomingWidth = image.width;
+                    SpoutIncomingHeight = image.height;
+                }
+
+                SenderFrameTypeData Idata;
+
+                Idata.gl.texture = SpoutIncomingTarget.texture;
+
+                rs.getFrameImage(image.imageId, RS_FRAMETYPE_OPENGL_TEXTURE, Idata);
+
+                //Ideally thise should operate in a separate thread.
+
+                sSend.SendTexture(
+                    Idata.gl.texture,
+                    GL_TEXTURE_2D,
+                    SpoutIncomingWidth,
+                    SpoutIncomingHeight,
+                    false
+                );
             }
-
-            SenderFrameTypeData Idata;
-
-            Idata.gl.texture = SpoutIncomingTarget.texture;
-
-            rs.getFrameImage(image.imageId, RS_FRAMETYPE_OPENGL_TEXTURE, Idata);
-
-            //Ideally thise should operate in a separate thread.
-
-            sSend.SendTexture(
-                Idata.gl.texture,
-                GL_TEXTURE_2D,
-                SpoutIncomingWidth,
-                SpoutIncomingHeight,
-                false
-            );
-
 
             const size_t numStreams = header ? header->nStreams : 0;
             for (size_t i = 0; i < numStreams; ++i)
