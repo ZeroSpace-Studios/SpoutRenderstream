@@ -149,6 +149,7 @@
     <ClInclude Include="argparse.hpp" />
     <ClInclude Include="includes\d3helpers.hpp" />
     <ClInclude Include="includes\d3renderstream.h" />
+    <ClInclude Include="includes\renderdoc_app.h" />
     <ClInclude Include="includes\renderstream.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

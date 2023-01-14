@@ -15,6 +15,7 @@
 #include "../SpoutGL/SpoutSender.h"
 #include "../includes/renderstream.hpp"
 #include "argparse.hpp"
+#include "../includes/renderdoc_app.h"
 
 // TODO
 // Add cli args for stream name and window size
@@ -27,6 +28,11 @@ typedef struct RenderTarget
     GLuint frameBuffer;
 } RenderTarget;
 
+
+struct free_delete
+{
+    void operator()(void* x) { free(x); }
+};
 
 GLint toGlInternalFormat(RSPixelFormat format)
 {
@@ -130,6 +136,11 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema) {
                 schema.schema.scenes.scenes[i].nParameters * sizeof(RemoteParameter)
             )
             );
+       
+		//std::shared_ptr<RemoteParameter> param (static_cast<RemoteParameter*>(malloc(schema.schema.scenes.scenes[i].nParameters * sizeof(RemoteParameter))), free_delete());
+        
+       // schema.schema.scenes.scenes[i].parameters = std::move(param.get());
+        
         RemoteParameterTypeDefaults defaults;
         RemoteParameter par;
         par.group = "Input";
@@ -210,14 +221,19 @@ void generateGlTexture(RenderTarget& target, const int width, const int height, 
 
 int main(int argc, char* argv[])
 {
-      // while (!::IsDebuggerPresent())
-      //    ::Sleep(100);
+     while (!::IsDebuggerPresent())
+        ::Sleep(100);
 
-    // Setup argpraeser
+
+  // Setup argpraeser
     argparse::ArgumentParser program("ZeroSpace SpoutBridge");
 
 
     program.add_argument("--windowed", "-w").help("Render Visible Window")
+        .default_value(false)
+        .implicit_value(true);
+
+    program.add_argument("--remove_sender_names", "-r").help("Sets the default behavior to remove sender names from the list of available senders.")
         .default_value(false)
         .implicit_value(true);
 
@@ -229,7 +245,7 @@ int main(int argc, char* argv[])
         std::printf("Error: %s\n", err.what());
         std::exit(1);
     }
-    
+
     // Setup receiver
     SpoutReceiver sRecv;
 
@@ -252,8 +268,8 @@ int main(int argc, char* argv[])
     }
 
     // Set Opengl Versions (P.S. If you accidentally put two of these like I did you will get a very strange read access error or something IDK)
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
@@ -261,15 +277,27 @@ int main(int argc, char* argv[])
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GL_TRUE);
 
     //Control window visibility
+    bool isWindowed = false;
     if (program["--windowed"] == true) {
         glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
-    } else {
-        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+        isWindowed = true;
     }
+    else {
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+
+    }
+
+
+    bool isRemoveSenders = false;
+    if (program["--remove_sender_names"] == true) {
+        isRemoveSenders = true;
+    }
+
+
 
     // A modern (and possibly messy) window pointer setup.
     // void(*)(GLFWwindow*) is a placeholder (any) type for the last arguments which is what will be called when the pointer needs to be released.
-    std::unique_ptr<GLFWwindow, void (*)(GLFWwindow *)> window(glfwCreateWindow(1280, 720, "ZeroSpace SpoutBridge (Non-Commerical)", nullptr, nullptr), glfwDestroyWindow);
+    std::unique_ptr<GLFWwindow, void (*)(GLFWwindow*)> window(glfwCreateWindow(1280, 720, "ZeroSpace SpoutBridge (Non-Commerical)", nullptr, nullptr), glfwDestroyWindow);
 
     // Check that the pointer is not a nullptr
     if (!window)
@@ -347,7 +375,7 @@ int main(int argc, char* argv[])
 
     //Cleaner Implmentation
 
-	//generateGlTexture(SpoutTarget, SpoutWidth, SpoutHeight, RS_FMT_RGBA32F);
+    //generateGlTexture(SpoutTarget, SpoutWidth, SpoutHeight, RS_FMT_RGBA32F);
 
     // Prepare texture for spout receiver
     glGenTextures(1, &SpoutTarget.texture);
@@ -368,7 +396,7 @@ int main(int argc, char* argv[])
         if (glGetError() != GL_NO_ERROR)
             throw std::runtime_error("Failed to setup render target texture parameters for spout");
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1280, 720, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1280, 720, 0, GL_RGBA, GL_FLOAT, nullptr);
         if (glGetError() != GL_NO_ERROR)
             throw std::runtime_error("Failed to create render target texture for spout");
     }
@@ -387,7 +415,7 @@ int main(int argc, char* argv[])
         if (glGetError() != GL_NO_ERROR)
             throw std::runtime_error("Failed to attach render target texture for stream");
 
-        GLenum buffers[] = {GL_COLOR_ATTACHMENT0};
+        GLenum buffers[] = { GL_COLOR_ATTACHMENT0 };
         glDrawBuffers(1, buffers);
         if (glGetError() != GL_NO_ERROR)
             throw std::runtime_error("Failed to set draw buffers for stream");
@@ -411,6 +439,15 @@ int main(int argc, char* argv[])
     std::vector<std::string> SenderNames;
     ScopedSchema schema;
 
+    //Setup loading the schema
+    {
+        // Loading a schema from disk is useful if some parts of it cannot be generated during runtime (ie. it is exported from an editor) 
+        // or if you want it to be user-editable
+        const Schema* importedSchema = rs.loadSchema(argv[0]);
+        if (importedSchema && importedSchema->scenes.nScenes > 0)
+            std::printf("A schema existed on disk");
+    }
+
     while (!glfwWindowShouldClose(window.get()))
     {
         // Get the sender names.
@@ -420,251 +457,275 @@ int main(int argc, char* argv[])
         std::vector<std::string> Senders = getSpoutSenders(sRecv);
 
         if (SenderNames.size() != Senders.size()) {
-            SenderNames = Senders;
-            generateSchema(SenderNames, schema);
-            rs.setSchema(&schema.schema);
-        }
-        if (sRecv.IsUpdated())
-        {
-            glBindTexture(GL_TEXTURE_2D, SpoutTarget.texture);
-            {
-                if (glGetError() != GL_NO_ERROR)
-                    throw std::runtime_error("Failed to bind render target texture for stream");
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sRecv.GetSenderWidth(), sRecv.GetSenderHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-                if (glGetError() != GL_NO_ERROR)
-                    throw std::runtime_error("Failed to generate spout texture");
+            //Handles adding new senders without breaking order;
+            for (auto x : Senders) {
+                if (std::find(SenderNames.begin(), SenderNames.end(), x) == SenderNames.end()) {
+                    SenderNames.push_back(x);
+                }
+                else {
+                    if (isRemoveSenders) {
+                        for (auto y : SenderNames) {
+                            if (std::find(Senders.begin(), Senders.end(), y) == Senders.end()) {
+                                SenderNames.erase(std::remove(SenderNames.begin(), SenderNames.end(), y), SenderNames.end());
+                            }
+                        }
+
+                    }
+                }
+                // SenderNames = Senders;
+                generateSchema(SenderNames, schema);
+                rs.setSchema(&schema.schema);
+                rs.saveSchema(argv[0], &schema.schema);
             }
-            glBindTexture(GL_TEXTURE_2D, 0);
-            SpoutWidth = sRecv.GetSenderWidth();
-            SpoutHeight = sRecv.GetSenderHeight();
         }
-        // Need to create a spout specific texture to read into.
-        // Putting true in the function fixes the inverted texture display which I'm too much of a n00b to solve.
-        if (sRecv.ReceiveTexture(SpoutTarget.texture, GL_TEXTURE_2D, false))
-        {
+            if (sRecv.IsUpdated())
+            {
+                glBindTexture(GL_TEXTURE_2D, SpoutTarget.texture);
+                {
+                    if (glGetError() != GL_NO_ERROR)
+                        throw std::runtime_error("Failed to bind render target texture for stream");
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sRecv.GetSenderWidth(), sRecv.GetSenderHeight(), 0, GL_RGBA, GL_FLOAT, nullptr);
+                    if (glGetError() != GL_NO_ERROR)
+                        throw std::runtime_error("Failed to generate spout texture");
+                }
+                glBindTexture(GL_TEXTURE_2D, 0);
+                SpoutWidth = sRecv.GetSenderWidth();
+                SpoutHeight = sRecv.GetSenderHeight();
+            }
+            // Need to create a spout specific texture to read into.
+            // Putting true in the function fixes the inverted texture display which I'm too much of a n00b to solve.
+            if (sRecv.ReceiveTexture(SpoutTarget.texture, GL_TEXTURE_2D, false))
+            {
 #ifdef DEBUG
-            std::printf("frame received\n");
-            PNL("frame received")
+                std::printf("frame received\n");
+                PNL("frame received")
 #else
 
 #endif
-        }
-        if (glGetError() != GL_NO_ERROR)
-            throw std::runtime_error("Failed Receiving frame from spout.");
-
-        // Clears the render window.
-        glClearColor(0.f, 0.f, 0.f, 0.f);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        // Copy from one framebuffer to another.
-
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, SpoutTarget.frameBuffer);
-        {
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-            {
-                if (glGetError() != GL_NO_ERROR)
-                    throw std::runtime_error("Failed to bind render target texture for stream");
-                glBlitFramebuffer(0, 0, SpoutWidth, SpoutHeight, 0, 0, 1280, 720,
-                                  GL_COLOR_BUFFER_BIT, GL_NEAREST);
-                if (glGetError() != GL_NO_ERROR)
-                    throw std::runtime_error("Failed to bind render target texture for stream");
             }
-        }
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+            if (glGetError() != GL_NO_ERROR)
+                throw std::runtime_error("Failed Receiving frame from spout.");
 
-        // It works up to here
+            // Clears the render window.
+           // glClearColor(0.f, 0.f, 0.f, 0.f);
+          //  glClear(GL_COLOR_BUFFER_BIT);
 
-        // Delete this block if it breaks
-        // Handle sending the frame to renderstream.
-        auto awaitResult = rs.awaitFrameData(5000);
-        if (std::holds_alternative<RS_ERROR>(awaitResult))
-        {
-            RS_ERROR err = std::get<RS_ERROR>(awaitResult);
-            // Update the streams pointer when a change error occurs.
-            if (err == RS_ERROR_STREAMS_CHANGED)
-            {
-                header.reset(rs.getStreams());
-                const size_t numStreams = header ? header->nStreams : 0;
-                for (size_t i = 0; i < numStreams; ++i)
-                {
-                    const StreamDescription &description = header->streams[i];
-                    RenderTarget &target = renderTargets[description.handle];
-                    glGenTextures(1, &target.texture);
-                    if (glGetError() != GL_NO_ERROR)
-                        throw std::runtime_error("Failed to generate render target texture for stream");
+            // Copy from spout framebuffer to the main window FBO.
 
-                    glBindTexture(GL_TEXTURE_2D, target.texture);
-                    if (glGetError() != GL_NO_ERROR)
-                        throw std::runtime_error("Failed to bind render target texture for stream");
+            if (isWindowed) {
 
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-                    if (glGetError() != GL_NO_ERROR)
-                        throw std::runtime_error("Failed to setup render target texture parameters for stream");
-
-                    glTexImage2D(GL_TEXTURE_2D, 0, toGlInternalFormat(description.format), description.width, description.height, 0, toGlFormat(description.format), toGlType(description.format), nullptr);
-                    if (glGetError() != GL_NO_ERROR)
-                        throw std::runtime_error("Failed to create render target texture for stream");
-                    glBindTexture(GL_TEXTURE_2D, 0);
-
-                    glGenFramebuffers(1, &target.frameBuffer);
-                    if (glGetError() != GL_NO_ERROR)
-                        throw std::runtime_error("Failed to create render target framebuffer for stream");
-
-                    glBindFramebuffer(GL_FRAMEBUFFER, target.frameBuffer);
-                    if (glGetError() != GL_NO_ERROR)
-                        throw std::runtime_error("Failed to bind render target framebuffer for stream");
-
-                    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target.texture, 0);
-                    if (glGetError() != GL_NO_ERROR)
-                        throw std::runtime_error("Failed to attach render target texture for stream");
-
-                    GLenum buffers[] = {GL_COLOR_ATTACHMENT0};
-                    glDrawBuffers(1, buffers);
-                    if (glGetError() != GL_NO_ERROR)
-                        throw std::runtime_error("Failed to set draw buffers for stream");
-
-                    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-                        throw std::runtime_error("Failed fame buffer status check");
-
-                    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-                }
-
-                std::printf("Found %d Streams\n", header->nStreams);
-               // PNL(fmt::sprintf("Found %d Streams\n", header->nStreams))
-                continue;
-            }
-            else if (err == RS_ERROR_TIMEOUT)
-            {
-                continue;
-            }
-            else if (err != RS_ERROR_SUCCESS)
-            {
-                std::printf("rs_awaitFrameData returned %d", err);
-                break;
-            }
-        }
-
-        const FrameData &frameData = std::get<FrameData>(awaitResult);
-        if (frameData.scene >= schema.schema.scenes.nScenes)
-        {
-            std::printf("Scene out of bounds\n");
-         //   PNL("Scene out of bounds");
-            continue;
-        }
-        sRecv.SetReceiverName(SenderNames[frameData.scene].c_str());
-
-        //Handle receiving texture
-
-        const auto& scene = schema.schema.scenes.scenes[frameData.scene];
-        ParameterValues values = rs.getFrameParameters(scene);
-
-        ImageFrameData image = values.get<ImageFrameData>("spout_input");
-        if (SpoutIncomingWidth != image.width || SpoutIncomingHeight != image.height)
-        {
-			generateGlTexture(SpoutIncomingTarget, image.width, image.height, image.format);
-            SpoutIncomingWidth = image.width;
-            SpoutIncomingHeight = image.height;  
-        }
-
-        SenderFrameTypeData Idata;
-
-        Idata.gl.texture = SpoutIncomingTarget.texture;
-
-        rs.getFrameImage(image.imageId, RS_FRAMETYPE_OPENGL_TEXTURE, Idata);
-
-        //Ideally thise should operate in a separate thread.
-
-        sSend.SendTexture(
-            Idata.gl.texture,
-            GL_TEXTURE_2D,
-            SpoutIncomingWidth,
-            SpoutIncomingHeight,
-            false
-        );
-
-
-        const size_t numStreams = header ? header->nStreams : 0;
-        for (size_t i = 0; i < numStreams; ++i)
-        {
-            const StreamDescription &description = header->streams[i];
-
-            CameraResponseData cameraData;
-            cameraData.tTracked = frameData.tTracked;
-            try
-            {
-                cameraData.camera = rs.getFrameCamera(description.handle);
-            }
-            catch (const RenderStreamError &e)
-            {
-                /*
-                if (e.error == RS_ERROR_NOTFOUND)
-                    continue;
-                throw;
-                */
-            }
-
-            {
-
-                const RenderTarget &target = renderTargets.at(description.handle);
-
-                glBindFramebuffer(GL_FRAMEBUFFER, target.frameBuffer);
-                {
-                    if (glGetError() != GL_NO_ERROR)
-                        throw std::runtime_error("Failed to bind xxx read fbo");
-                    //  glClear(GL_COLOR_BUFFER_BIT);
-                }
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-                //This may cause a breaking change
-
-                glClearColor(0.f, 0.f, 0.f, 0.f);
-                glClear(GL_COLOR_BUFFER_BIT);
-
-                // Here
-
-                glViewport(0, 0, SpoutWidth, SpoutHeight);
-
-                // Set this back to 0
                 glBindFramebuffer(GL_READ_FRAMEBUFFER, SpoutTarget.frameBuffer);
                 {
-                    if (glGetError() != GL_NO_ERROR)
-                        throw std::runtime_error("Failed to bind 1111 read fbo");
-                    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target.frameBuffer);
+                    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
                     {
                         if (glGetError() != GL_NO_ERROR)
-                            throw std::runtime_error("Failed to bind read fbo");
-                        glBlitFramebuffer(0, 0, SpoutWidth, SpoutHeight, 0, 0, description.width, description.height,
-                                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                            throw std::runtime_error("Failed to bind render target texture for stream");
+                        glBlitFramebuffer(0, 0, SpoutWidth, SpoutHeight, 0, 720, 1280, 0,
+                            GL_COLOR_BUFFER_BIT, GL_NEAREST);
                         if (glGetError() != GL_NO_ERROR)
-                            throw std::runtime_error("Failed to blit.");
+                            throw std::runtime_error("Failed to bind render target texture for stream");
                     }
                 }
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
-                if (glGetError() != GL_NO_ERROR)
-                    throw std::runtime_error("Failed to bind 000 read fbo");
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 
-                glFinish();
-
-                SenderFrameTypeData data;
-                data.gl.texture = target.texture;
-
-                FrameResponseData response = {};
-                response.cameraData = &cameraData;
-
-                // Send the frame to renderstream
-                // I would hope this would generate some form of error, but it doesn't.
-                rs.sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &response);
             }
+
+
+
+            // It works up to here
+
+            // Delete this block if it breaks
+            // Handle sending the frame to renderstream.
+            auto awaitResult = rs.awaitFrameData(5000);
+            if (std::holds_alternative<RS_ERROR>(awaitResult))
+            {
+                RS_ERROR err = std::get<RS_ERROR>(awaitResult);
+                // Update the streams pointer when a change error occurs.
+                if (err == RS_ERROR_STREAMS_CHANGED)
+                {
+                    header.reset(rs.getStreams());
+                    const size_t numStreams = header ? header->nStreams : 0;
+                    for (size_t i = 0; i < numStreams; ++i)
+                    {
+                        const StreamDescription& description = header->streams[i];
+                        RenderTarget& target = renderTargets[description.handle];
+                        glGenTextures(1, &target.texture);
+                        if (glGetError() != GL_NO_ERROR)
+                            throw std::runtime_error("Failed to generate render target texture for stream");
+
+                        glBindTexture(GL_TEXTURE_2D, target.texture);
+                        if (glGetError() != GL_NO_ERROR)
+                            throw std::runtime_error("Failed to bind render target texture for stream");
+
+                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+                        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+                        if (glGetError() != GL_NO_ERROR)
+                            throw std::runtime_error("Failed to setup render target texture parameters for stream");
+
+                        glTexImage2D(GL_TEXTURE_2D, 0, toGlInternalFormat(description.format), description.width, description.height, 0, toGlFormat(description.format), toGlType(description.format), nullptr);
+                        if (glGetError() != GL_NO_ERROR)
+                            throw std::runtime_error("Failed to create render target texture for stream");
+                        glBindTexture(GL_TEXTURE_2D, 0);
+
+                        glGenFramebuffers(1, &target.frameBuffer);
+                        if (glGetError() != GL_NO_ERROR)
+                            throw std::runtime_error("Failed to create render target framebuffer for stream");
+
+                        glBindFramebuffer(GL_FRAMEBUFFER, target.frameBuffer);
+                        if (glGetError() != GL_NO_ERROR)
+                            throw std::runtime_error("Failed to bind render target framebuffer for stream");
+
+                        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target.texture, 0);
+                        if (glGetError() != GL_NO_ERROR)
+                            throw std::runtime_error("Failed to attach render target texture for stream");
+
+                        GLenum buffers[] = { GL_COLOR_ATTACHMENT0 };
+                        glDrawBuffers(1, buffers);
+                        if (glGetError() != GL_NO_ERROR)
+                            throw std::runtime_error("Failed to set draw buffers for stream");
+
+                        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+                            throw std::runtime_error("Failed fame buffer status check");
+
+                        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                    }
+
+                    std::printf("Found %d Streams\n", header->nStreams);
+                    // PNL(fmt::sprintf("Found %d Streams\n", header->nStreams))
+                    continue;
+                }
+                else if (err == RS_ERROR_TIMEOUT)
+                {
+                    continue;
+                }
+                else if (err != RS_ERROR_SUCCESS)
+                {
+                    std::printf("rs_awaitFrameData returned %d", err);
+                    break;
+                }
+            }
+
+            const FrameData& frameData = std::get<FrameData>(awaitResult);
+            if (frameData.scene >= schema.schema.scenes.nScenes)
+            {
+                std::printf("Scene out of bounds\n");
+                //   PNL("Scene out of bounds");
+                continue;
+            }
+            sRecv.SetReceiverName(SenderNames[frameData.scene].c_str());
+
+            //Handle receiving texture
+
+            const auto& scene = schema.schema.scenes.scenes[frameData.scene];
+            ParameterValues values = rs.getFrameParameters(scene);
+
+            ImageFrameData image = values.get<ImageFrameData>("spout_input");
+            if (SpoutIncomingWidth != image.width || SpoutIncomingHeight != image.height)
+            {
+                generateGlTexture(SpoutIncomingTarget, image.width, image.height, image.format);
+                SpoutIncomingWidth = image.width;
+                SpoutIncomingHeight = image.height;
+            }
+
+            SenderFrameTypeData Idata;
+
+            Idata.gl.texture = SpoutIncomingTarget.texture;
+
+            rs.getFrameImage(image.imageId, RS_FRAMETYPE_OPENGL_TEXTURE, Idata);
+
+            //Ideally thise should operate in a separate thread.
+
+            sSend.SendTexture(
+                Idata.gl.texture,
+                GL_TEXTURE_2D,
+                SpoutIncomingWidth,
+                SpoutIncomingHeight,
+                false
+            );
+
+
+            const size_t numStreams = header ? header->nStreams : 0;
+            for (size_t i = 0; i < numStreams; ++i)
+            {
+                const StreamDescription& description = header->streams[i];
+
+                CameraResponseData cameraData;
+                cameraData.tTracked = frameData.tTracked;
+                try
+                {
+                    cameraData.camera = rs.getFrameCamera(description.handle);
+                }
+                catch (const RenderStreamError& e)
+                {
+                    /*
+                    if (e.error == RS_ERROR_NOTFOUND)
+                        continue;
+                    throw;
+                    */
+                }
+
+                {
+
+                    const RenderTarget& target = renderTargets.at(description.handle);
+
+                    glBindFramebuffer(GL_FRAMEBUFFER, target.frameBuffer);
+                    {
+                        if (glGetError() != GL_NO_ERROR)
+                            throw std::runtime_error("Failed to bind xxx read fbo");
+                        //  glClear(GL_COLOR_BUFFER_BIT);
+                    }
+
+                    glClearColor(0.f, 0.f, 0.f, 0.f);
+                    glClear(GL_COLOR_BUFFER_BIT);
+                    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+                    //This may cause a breaking change
+
+
+                    // Here
+
+                    glViewport(0, 0, SpoutWidth, SpoutHeight);
+
+                    // Set this back to 0
+                    glBindFramebuffer(GL_READ_FRAMEBUFFER, SpoutTarget.frameBuffer);
+                    {
+                        if (glGetError() != GL_NO_ERROR)
+                            throw std::runtime_error("Failed to bind 1111 read fbo");
+                        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target.frameBuffer);
+                        {
+                            if (glGetError() != GL_NO_ERROR)
+                                throw std::runtime_error("Failed to bind read fbo");
+                            glBlitFramebuffer(0, 0, SpoutWidth, SpoutHeight, 0, 0, description.width, description.height,
+                                GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                            if (glGetError() != GL_NO_ERROR)
+                                throw std::runtime_error("Failed to blit.");
+                        }
+                    }
+                    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                    if (glGetError() != GL_NO_ERROR)
+                        throw std::runtime_error("Failed to bind 000 read fbo");
+
+                    glFinish();
+
+                    SenderFrameTypeData data;
+                    data.gl.texture = target.texture;
+
+                    FrameResponseData response = {};
+                    response.cameraData = &cameraData;
+
+                    // Send the frame to renderstream
+                    // I would hope this would generate some form of error, but it doesn't.
+                    rs.sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &response);
+                }
+            }
+
+            // Delete block
+            glfwSwapBuffers(window.get());
         }
-
-        // Delete block
-
-        glfwSwapBuffers(window.get());
-    }
+        
     return 0;
 }
