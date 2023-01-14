@@ -225,8 +225,8 @@ void generateGlTexture(RenderTarget& target, const int width, const int height, 
 
 int main(int argc, char* argv[])
 {
-   //  while (!::IsDebuggerPresent())
-    //    ::Sleep(100);
+     while (!::IsDebuggerPresent())
+        ::Sleep(100);
 
 
   // Setup argpraeser
@@ -385,56 +385,8 @@ int main(int argc, char* argv[])
     int SpoutHeight = 0;
 
     //Cleaner Implmentation
-
-    //generateGlTexture(SpoutTarget, SpoutWidth, SpoutHeight, RS_FMT_RGBA32F);
-
-    // Prepare texture for spout receiver
-    glGenTextures(1, &SpoutTarget.texture);
-    if (glGetError() != GL_NO_ERROR)
-        throw std::runtime_error("Failed to generate render target texture for stream");
-
-    glBindTexture(GL_TEXTURE_2D, SpoutTarget.texture);
-    {
-        if (glGetError() != GL_NO_ERROR)
-            throw std::runtime_error("Failed to bind render target texture for stream");
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-        if (glGetError() != GL_NO_ERROR)
-            throw std::runtime_error("Failed to setup render target texture parameters for spout");
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1280, 720, 0, GL_RGBA, GL_FLOAT, nullptr);
-        if (glGetError() != GL_NO_ERROR)
-            throw std::runtime_error("Failed to create render target texture for spout");
-    }
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    glGenFramebuffers(1, &SpoutTarget.frameBuffer);
-    if (glGetError() != GL_NO_ERROR)
-        throw std::runtime_error("Failed to create render target framebuffer for stream");
-
-    glBindFramebuffer(GL_FRAMEBUFFER, SpoutTarget.frameBuffer);
-    {
-        if (glGetError() != GL_NO_ERROR)
-            throw std::runtime_error("Failed to bind render target framebuffer for stream");
-
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, SpoutTarget.texture, 0);
-        if (glGetError() != GL_NO_ERROR)
-            throw std::runtime_error("Failed to attach render target texture for stream");
-
-        GLenum buffers[] = { GL_COLOR_ATTACHMENT0 };
-        glDrawBuffers(1, buffers);
-        if (glGetError() != GL_NO_ERROR)
-            throw std::runtime_error("Failed to set draw buffers for stream");
-
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            throw std::runtime_error("Failed fame buffer status check");
-    }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    //Must pass non 0 values
+    generateGlTexture(SpoutTarget, 1280, 720, RS_FMT_RGBA32F);
 
     // Generate Map for render targets.
     std::unordered_map<StreamHandle, RenderTarget> renderTargets;
