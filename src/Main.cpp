@@ -180,13 +180,6 @@ void generateGlTexture(RenderTarget& target, const int width, const int height, 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
         
         //May no longer be needed.
-        /*
-        GLint const Swizzle[] = { GL_BLUE, GL_GREEN, GL_RED, GL_ALPHA };
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, Swizzle[0]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, Swizzle[1]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, Swizzle[2]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, Swizzle[3]);
-        */
 
         if (glGetError() != GL_NO_ERROR)
             throw std::runtime_error("Failed to setup render target texture parameters");
@@ -483,6 +476,9 @@ int main(int argc, char* argv[])
                     {
                         if (glGetError() != GL_NO_ERROR)
                             throw std::runtime_error("Failed to bind render target texture for stream");
+
+                        glViewport(0, 0, SpoutWidth, SpoutHeight);
+
                         glBlitFramebuffer(0, 0, SpoutWidth, SpoutHeight, 0, 720, 1280, 0,
                             GL_COLOR_BUFFER_BIT, GL_NEAREST);
                         if (glGetError() != GL_NO_ERROR)
@@ -494,7 +490,6 @@ int main(int argc, char* argv[])
             }
 
 
-            // Delete this block if it breaks
             // Handle sending the frame to renderstream.
             auto awaitResult = rs.awaitFrameData(5000);
             if (std::holds_alternative<RS_ERROR>(awaitResult))
@@ -604,12 +599,7 @@ int main(int argc, char* argv[])
                     glClear(GL_COLOR_BUFFER_BIT);
                     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-                    //This may cause a breaking change
-
-
-                    // Here
-
-                    glViewport(0, 0, SpoutWidth, SpoutHeight);
+                 //   glViewport(0, 0, SpoutWidth, SpoutHeight);
 
                     // Set this back to 0
                     glBindFramebuffer(GL_READ_FRAMEBUFFER, SpoutTarget.frameBuffer);
@@ -630,7 +620,7 @@ int main(int argc, char* argv[])
                     if (glGetError() != GL_NO_ERROR)
                         throw std::runtime_error("Failed to bind 000 read fbo");
 
-                    glFinish();
+                    //glFinish();
 
                     SenderFrameTypeData data;
                     data.gl.texture = target.texture;
@@ -644,7 +634,6 @@ int main(int argc, char* argv[])
                 }
             }
 
-            // Delete block
             glfwSwapBuffers(window.get());
         }
         
