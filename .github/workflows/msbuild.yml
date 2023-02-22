@@ -80,7 +80,7 @@ jobs:
     - name: rename
       run: mv ./upload ./SpoutBridge
     - name: compress folder
-      run: zip ./SpoutBridge.zip ./SpoutBridge
+      run: zip -r ./SpoutBridge.zip ./SpoutBridge
     - name: upload windows
       id: upload-windows
       uses: actions/upload-release-asset@v1.0.1
