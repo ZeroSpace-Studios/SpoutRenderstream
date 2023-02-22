@@ -109,14 +109,50 @@ std::vector<std::string> getSpoutSenders(SpoutReceiver& sRecv) {
 }
 
 
-void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema, bool genInputs) {
-    schema.schema.scenes.nScenes = senders.size();
+void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema, bool genInputs, bool genOutputs = true) {
+   
     //Change the below line to use a smart pointer
 
     schema.schema.engineName = "SpoutRenderStream";
     schema.schema.engineVersion = "1.30";
     schema.schema.info = "";
 
+
+    
+    if (!genOutputs) {
+        schema.schema.scenes.nScenes = 1;
+        schema.schema.scenes.scenes = static_cast<RemoteParameters*>(
+            malloc(
+                schema.schema.scenes.nScenes * sizeof(RemoteParameters)
+            )
+            );
+        RemoteParameters rp = {
+            "Default",
+            1,
+            nullptr,
+        };
+        schema.schema.scenes.scenes[0] = rp;
+        schema.schema.scenes.scenes[0].parameters = static_cast<RemoteParameter*>(
+            malloc(
+                schema.schema.scenes.scenes[0].nParameters * sizeof(RemoteParameter)
+            )
+        );
+        RemoteParameterTypeDefaults defaults;
+        RemoteParameter par;
+        par.group = "Input";
+        par.displayName = "SpoutSource";
+        par.key = "spout_input";
+        par.type = RS_PARAMETER_IMAGE;
+        par.nOptions = 0;
+        par.options = nullptr;
+        par.dmxOffset = -1;
+        par.dmxType = RS_DMX_16_BE;
+        par.flags = REMOTEPARAMETER_NO_FLAGS;
+        schema.schema.scenes.scenes[0].parameters[0] = par;
+        return;
+    }
+
+    schema.schema.scenes.nScenes = senders.size();
     schema.schema.scenes.scenes = static_cast<RemoteParameters*>(
         malloc(
             schema.schema.scenes.nScenes * sizeof(RemoteParameters)
@@ -138,7 +174,7 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema, boo
                 malloc(
                     schema.schema.scenes.scenes[i].nParameters * sizeof(RemoteParameter)
                 )
-                );
+            );
 
             //std::shared_ptr<RemoteParameter> param (static_cast<RemoteParameter*>(malloc(schema.schema.scenes.scenes[i].nParameters * sizeof(RemoteParameter))), free_delete());
 
@@ -218,8 +254,8 @@ void generateGlTexture(RenderTarget& target, const int width, const int height, 
 
 int main(int argc, char* argv[])
 {
-     while (!::IsDebuggerPresent())
-        ::Sleep(100);
+   //  while (!::IsDebuggerPresent())
+    //    ::Sleep(100);
 
 
   // Setup argpraeser
@@ -237,6 +273,10 @@ int main(int argc, char* argv[])
     program.add_argument("--inputs", "-i").help("Presents a texture input from disguise as a RenderStream Spout source.")
 		.default_value(false)
 		.implicit_value(true);
+
+    program.add_argument("--disable_outputs").help("Disables outputs, for use when wanting to just send an output.")
+        .default_value(false)
+        .implicit_value(true);
 
     try {
         program.parse_args(argc, argv);
@@ -296,6 +336,11 @@ int main(int argc, char* argv[])
 	bool isInput = false;
     if (program["--inputs"] == true) {
 		isInput = true;
+    }
+
+    bool isOutputDisabled = false;
+    if (program["--disable_outputs"] == true) {
+        isOutputDisabled = true;
     }
 
 
@@ -395,6 +440,11 @@ int main(int argc, char* argv[])
     std::vector<std::string> SenderNames;
     ScopedSchema schema;
 
+    if (isOutputDisabled) {
+        generateSchema(SenderNames, schema, isInput, false);
+        rs.setSchema(&schema.schema);
+        rs.saveSchema(argv[0], &schema.schema);
+    } else
     //Setup loading the schema
     {
         // Loading a schema from disk is useful if some parts of it cannot be generated during runtime (ie. it is exported from an editor) 
@@ -404,36 +454,41 @@ int main(int argc, char* argv[])
             std::printf("A schema existed on disk");
     }
 
+
     while (!glfwWindowShouldClose(window.get()))
     {
         // Get the sender names.
 
         glfwPollEvents();
 
-        std::vector<std::string> Senders = getSpoutSenders(sRecv);
+        
+        if (!isOutputDisabled)
+        {
+            std::vector<std::string> Senders = getSpoutSenders(sRecv);
 
-        if (SenderNames.size() != Senders.size()) {
-            //Handles adding new senders without breaking order;
-            for (auto x : Senders) {
-                if (std::find(SenderNames.begin(), SenderNames.end(), x) == SenderNames.end()) {
-                    SenderNames.push_back(x);
-                }
-                else {
-                    if (isRemoveSenders) {
-                        for (auto y : SenderNames) {
-                            if (std::find(Senders.begin(), Senders.end(), y) == Senders.end()) {
-                                SenderNames.erase(std::remove(SenderNames.begin(), SenderNames.end(), y), SenderNames.end());
-                            }
-                        }
-
+            if (SenderNames.size() != Senders.size()) {
+                //Handles adding new senders without breaking order;
+                for (auto x : Senders) {
+                    if (std::find(SenderNames.begin(), SenderNames.end(), x) == SenderNames.end()) {
+                        SenderNames.push_back(x);
                     }
-                }
-                // SenderNames = Senders;
-                generateSchema(SenderNames, schema, isInput);
-                rs.setSchema(&schema.schema);
-                rs.saveSchema(argv[0], &schema.schema);
-            }
-        }
+                    else {
+                        if (isRemoveSenders) {
+                            for (auto y : SenderNames) {
+                                if (std::find(Senders.begin(), Senders.end(), y) == Senders.end()) {
+                                    SenderNames.erase(std::remove(SenderNames.begin(), SenderNames.end(), y), SenderNames.end());
+                                }
+                            }
+
+                                }
+                            }
+                    // SenderNames = Senders;
+                    generateSchema(SenderNames, schema, isInput);
+                    rs.setSchema(&schema.schema);
+                    rs.saveSchema(argv[0], &schema.schema);
+                        }
+                    }
+
             if (sRecv.IsUpdated())
             {
                 glBindTexture(GL_TEXTURE_2D, SpoutTarget.texture);
@@ -461,7 +516,7 @@ int main(int argc, char* argv[])
             }
             if (glGetError() != GL_NO_ERROR)
                 throw std::runtime_error("Failed Receiving frame from spout.");
-
+        }
             // Clears the render window.
            // glClearColor(0.f, 0.f, 0.f, 0.f);
           //  glClear(GL_COLOR_BUFFER_BIT);
@@ -529,8 +584,10 @@ int main(int argc, char* argv[])
                 //   PNL("Scene out of bounds");
                 continue;
             }
-            sRecv.SetReceiverName(SenderNames[frameData.scene].c_str());
 
+            if (!isOutputDisabled) {
+                sRecv.SetReceiverName(SenderNames[frameData.scene].c_str());
+            }
             //Handle receiving texture
 
             if (isInput) {
@@ -563,74 +620,78 @@ int main(int argc, char* argv[])
                     false
                 );
             }
+            if (!isOutputDisabled) {
 
-            const size_t numStreams = header ? header->nStreams : 0;
-            for (size_t i = 0; i < numStreams; ++i)
-            {
-                const StreamDescription& description = header->streams[i];
 
-                CameraResponseData cameraData;
-                cameraData.tTracked = frameData.tTracked;
-                try
+                const size_t numStreams = header ? header->nStreams : 0;
+                for (size_t i = 0; i < numStreams; ++i)
                 {
-                    cameraData.camera = rs.getFrameCamera(description.handle);
-                }
-                catch (const RenderStreamError& e)
-                {
-                    /*
-                    if (e.error == RS_ERROR_NOTFOUND)
-                        continue;
-                    throw;
-                    */
-                }
+                    const StreamDescription& description = header->streams[i];
 
-                {
-
-                    const RenderTarget& target = renderTargets.at(description.handle);
-
-                    glBindFramebuffer(GL_FRAMEBUFFER, target.frameBuffer);
+                    CameraResponseData cameraData;
+                    cameraData.tTracked = frameData.tTracked;
+                    try
                     {
-                        if (glGetError() != GL_NO_ERROR)
-                            throw std::runtime_error("Failed to bind xxx read fbo");
-                        //  glClear(GL_COLOR_BUFFER_BIT);
+                        cameraData.camera = rs.getFrameCamera(description.handle);
+                    }
+                    catch (const RenderStreamError& e)
+                    {
+                        /*
+                        if (e.error == RS_ERROR_NOTFOUND)
+                            continue;
+                        throw;
+                        */
                     }
 
-                    glClearColor(0.f, 0.f, 0.f, 0.f);
-                    glClear(GL_COLOR_BUFFER_BIT);
-                    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-                 //   glViewport(0, 0, SpoutWidth, SpoutHeight);
-
-                    // Set this back to 0
-                    glBindFramebuffer(GL_READ_FRAMEBUFFER, SpoutTarget.frameBuffer);
                     {
-                        if (glGetError() != GL_NO_ERROR)
-                            throw std::runtime_error("Failed to bind 1111 read fbo");
-                        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target.frameBuffer);
+
+                        const RenderTarget& target = renderTargets.at(description.handle);
+
+                        glBindFramebuffer(GL_FRAMEBUFFER, target.frameBuffer);
                         {
                             if (glGetError() != GL_NO_ERROR)
-                                throw std::runtime_error("Failed to bind read fbo");
-                            glBlitFramebuffer(0, 0, SpoutWidth, SpoutHeight, 0, 0, description.width, description.height,
-                                GL_COLOR_BUFFER_BIT, GL_NEAREST);
-                            if (glGetError() != GL_NO_ERROR)
-                                throw std::runtime_error("Failed to blit.");
+                                throw std::runtime_error("Failed to bind xxx read fbo");
+                            //  glClear(GL_COLOR_BUFFER_BIT);
                         }
+
+                        glClearColor(0.f, 0.f, 0.f, 0.f);
+                        glClear(GL_COLOR_BUFFER_BIT);
+                        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+                        //   glViewport(0, 0, SpoutWidth, SpoutHeight);
+
+                           // Set this back to 0
+                        glBindFramebuffer(GL_READ_FRAMEBUFFER, SpoutTarget.frameBuffer);
+                        {
+                            if (glGetError() != GL_NO_ERROR)
+                                throw std::runtime_error("Failed to bind 1111 read fbo");
+                            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target.frameBuffer);
+                            {
+                                if (glGetError() != GL_NO_ERROR)
+                                    throw std::runtime_error("Failed to bind read fbo");
+                                glBlitFramebuffer(0, 0, SpoutWidth, SpoutHeight, 0, 0, description.width, description.height,
+                                    GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                                if (glGetError() != GL_NO_ERROR)
+                                    throw std::runtime_error("Failed to blit.");
+                            }
+                        }
+                        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                        if (glGetError() != GL_NO_ERROR)
+                            throw std::runtime_error("Failed to bind 000 read fbo");
+
+                        //glFinish();
+
+                        SenderFrameTypeData data;
+                        data.gl.texture = target.texture;
+
+                        FrameResponseData response = {};
+                        response.cameraData = &cameraData;
+
+                        // Send the frame to renderstream
+                        // I would hope this would generate some form of error, but it doesn't.
+                        rs.sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &response);
                     }
-                    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-                    if (glGetError() != GL_NO_ERROR)
-                        throw std::runtime_error("Failed to bind 000 read fbo");
-
-                    //glFinish();
-
-                    SenderFrameTypeData data;
-                    data.gl.texture = target.texture;
-
-                    FrameResponseData response = {};
-                    response.cameraData = &cameraData;
-
-                    // Send the frame to renderstream
-                    // I would hope this would generate some form of error, but it doesn't.
-                    rs.sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &response);
+                   
                 }
             }
 
