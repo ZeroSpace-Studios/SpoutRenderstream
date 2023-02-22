@@ -27,7 +27,12 @@ jobs:
       uses: microsoft/setup-msbuild@v1.0.2
       with:
         msbuild-architecture: x64
-
+    - name: Setup Cmake
+      uses: lukka/get-cmake@latest
+    - name: Restore artifacts, or setup vcpkg (do not install any package)
+      uses: lukka/run-vcpkg@v10
+      with:
+        runVcpkgInstall: true
     - name: Restore NuGet packages
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: nuget restore ${{env.SOLUTION_FILE_PATH}}
