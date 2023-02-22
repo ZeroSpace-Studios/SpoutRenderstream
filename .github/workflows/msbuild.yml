@@ -33,6 +33,7 @@ jobs:
       uses: lukka/run-vcpkg@v10
       with:
         runVcpkgInstall: true
+        vcpkgGitCommitId: 703a8113f42e794534df5dfc5cece5dabcb949d0
     - name: Restore NuGet packages
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: nuget restore ${{env.SOLUTION_FILE_PATH}}
