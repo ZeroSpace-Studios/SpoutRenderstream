@@ -27,16 +27,15 @@ jobs:
       uses: microsoft/setup-msbuild@v1.0.2
       with:
         msbuild-architecture: x64
-    # - name: Setup Cmake
-    #   uses: lukka/get-cmake@latest
-    # - name: Restore artifacts, or setup vcpkg (do not install any package)
-    #   uses: lukka/run-vcpkg@v10
-    #   with:
-    #     runVcpkgInstall: true
-    #     vcpkgGitCommitId: 703a8113f42e794534df5dfc5cece5dabcb949d0
-    # - name: Integrate vcpkg
-    #   working-directory: ${{env.GITHUB_WORKSPACE}}/vcpkg
-    #   run: ./vcpkg.exe integrate install --vcpkg-root ${{env.GITHUB_WORKSPACE}}/vcpkg
+    - name: Setup Cmake
+      uses: lukka/get-cmake@latest
+    - name: Restore artifacts, or setup vcpkg (do not install any package)
+      uses: lukka/run-vcpkg@v10
+      with:
+        vcpkgGitCommitId: 703a8113f42e794534df5dfc5cece5dabcb949d0
+    - name: Integrate vcpkg
+      working-directory: ${{env.GITHUB_WORKSPACE}}/vcpkg
+      run: ./vcpkg.exe integrate install --vcpkg-root ${{env.GITHUB_WORKSPACE}}/vcpkg
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
