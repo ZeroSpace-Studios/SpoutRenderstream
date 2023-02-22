@@ -37,3 +37,49 @@ jobs:
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
+    - name: RemoveDebugs
+      run: rm build/x64/Release/*.pdb
+      
+    - name: Save Folder
+      uses: actions/upload-artifact@v3
+      with:
+        name: upload
+        path: build/x64/Release/
+      
+  upload-release:
+
+    runs-on: ubuntu-20.04
+    needs: [build]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: |
+          Newest Push
+        draft: false
+        prerelease: false
+    - name: download artifacts
+      uses: actions/download-artifact@v1
+      with:
+        name: upload
+    - name: rename
+      run: mv ./upload ./SpoutBridge
+    - name: compress folder
+      run: zip ./SpoutBridge.zip ./SpoutBridge
+    - name: upload windows
+      id: upload-windows
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./SpoutBridge.zip
+        asset_name: SpoutBridge.zip
+        asset_content_type: application/zip
