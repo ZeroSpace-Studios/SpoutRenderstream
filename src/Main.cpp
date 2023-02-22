@@ -15,7 +15,6 @@
 #include "../SpoutGL/SpoutSender.h"
 #include "../includes/renderstream.hpp"
 #include "argparse.hpp"
-#include "../includes/renderdoc_app.h"
 
 // TODO
 // Add cli args for stream name and window size
