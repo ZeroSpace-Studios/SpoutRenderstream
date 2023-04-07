@@ -48,7 +48,7 @@ jobs:
       run: cp Spout.dll build/x64/Release/
     - name: Copy Licnese
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: cp LICENSE /build/x64/Release/
+      run: cp LICENSE build/x64/Release/
     - name: Save Folder
       uses: actions/upload-artifact@v3
       with:
@@ -63,6 +63,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    - name: Install Node
+      run: apt install -y nodejs npm
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -79,6 +81,8 @@ jobs:
       uses: actions/download-artifact@v1
       with:
         name: upload
+    - name: Generate PDF
+      run: npm install -g md-to-pdf && cat README.md | md-to-pdf > Instructions.pdf && cp Instructions.pdf ./upload/
     - name: rename
       run: mv ./upload ./ZeroSpaceSpoutBridge
     - name: compress folder
