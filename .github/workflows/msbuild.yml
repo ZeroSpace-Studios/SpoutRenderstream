@@ -57,14 +57,14 @@ jobs:
       
   upload-release:
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-2.04
     needs: [build]
     permissions: write-all
 
     steps:
     - uses: actions/checkout@v1
     - name: Install Node
-      run: apt install -y nodejs npm
+      run: sudo apt-get install -y nodejs npm
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
