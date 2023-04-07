@@ -46,7 +46,9 @@ jobs:
     - name: Copy DLLs
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: cp Spout.dll build/x64/Release/
-      
+    - name: Copy Licnese
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: cp LICENSE /build/x64/Release/
     - name: Save Folder
       uses: actions/upload-artifact@v3
       with:
@@ -78,9 +80,9 @@ jobs:
       with:
         name: upload
     - name: rename
-      run: mv ./upload ./SpoutBridge
+      run: mv ./upload ./ZeroSpaceSpoutBridge
     - name: compress folder
-      run: zip -r ./SpoutBridge.zip ./SpoutBridge
+      run: zip -r ./ZeroSpaceSpoutBridge.zip ./ZeroSpaceSpoutBridge
     - name: upload windows
       id: upload-windows
       uses: actions/upload-release-asset@v1.0.1
@@ -88,6 +90,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./SpoutBridge.zip
-        asset_name: SpoutBridge.zip
+        asset_path: ./ZeroSpaceSpoutBridge.zip
+        asset_name: ZeroSpaceSpoutBridge.zip
         asset_content_type: application/zip
