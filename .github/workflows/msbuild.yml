@@ -57,7 +57,7 @@ jobs:
       
   upload-release:
 
-    runs-on: ubuntu-2.04
+    runs-on: ubuntu-20.04
     needs: [build]
     permissions: write-all
 
