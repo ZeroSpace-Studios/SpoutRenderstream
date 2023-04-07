@@ -1,3 +1,5 @@
+![logo-narrow-dark](https://user-images.githubusercontent.com/32549017/230673150-8743de1a-b76c-47eb-b707-3ac023ef5169.png)
+
 ![image](https://user-images.githubusercontent.com/32549017/230662065-5dfc1772-e491-489e-a401-358b7885f2cc.png)
 
 # SpoutRenderstream
