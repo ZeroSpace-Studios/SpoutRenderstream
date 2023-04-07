@@ -1,3 +1,5 @@
+![image](https://user-images.githubusercontent.com/32549017/230662065-5dfc1772-e491-489e-a401-358b7885f2cc.png)
+
 # SpoutRenderstream
 Allow running any spout compatible application on a Disguise RX at full 12bit RGBA.
 
