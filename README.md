@@ -18,7 +18,7 @@ Useful for
   
   
 ## Installation.
-1. Download the release Zip from here.
+1. Download the release Zip from [here](https://github.com/ZeroSpace-Studios/SpoutRenderstream/releases/download/v1.2/SpoutBridge.zip).
 2. Decompress the folder.
 3. Add it to your RenderStream Projects folder.
 4. Add a new workload in disguise.
