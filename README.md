@@ -30,3 +30,7 @@ Useful for
 
 ## Tutorial
 https://youtu.be/269qidd7KMU
+
+
+## Notes
+To expose texture outputs from disguise you need to add a custom argument in disguise like you would for unreal and set it to `--inputs` and that will enable the feature. This is disabled by default to maiximize performance.
