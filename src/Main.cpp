@@ -603,7 +603,8 @@ int main(int argc, char* argv[])
                     SpoutIncomingHeight = image.height;
                 }
 
-                SenderFrameTypeData Idata;
+                SenderFrame Idata;
+                Idata.type = RS_FRAMETYPE_OPENGL_TEXTURE;
 
                 Idata.gl.texture = SpoutIncomingTarget.texture;
 
@@ -680,7 +681,8 @@ int main(int argc, char* argv[])
 
                         //glFinish();
 
-                        SenderFrameTypeData data;
+                        SenderFrame data;
+                        data.type = RS_FRAMETYPE_OPENGL_TEXTURE;
                         data.gl.texture = target.texture;
 
                         FrameResponseData response = {};
