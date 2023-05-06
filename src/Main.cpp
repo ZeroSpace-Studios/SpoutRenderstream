@@ -690,7 +690,7 @@ int main(int argc, char* argv[])
 
                         // Send the frame to renderstream
                         // I would hope this would generate some form of error, but it doesn't.
-                        rs.sendFrame(description.handle, data, &response);
+                        rs.sendFrame(description.handle, data, response);
                     }
                    
                 }
