@@ -608,7 +608,7 @@ int main(int argc, char* argv[])
 
                 Idata.gl.texture = SpoutIncomingTarget.texture;
 
-                rs.getFrameImage(image.imageId, RS_FRAMETYPE_OPENGL_TEXTURE, Idata);
+                rs.getFrameImage(image.imageId, Idata);
 
                 //Ideally thise should operate in a separate thread.
 
@@ -690,7 +690,7 @@ int main(int argc, char* argv[])
 
                         // Send the frame to renderstream
                         // I would hope this would generate some form of error, but it doesn't.
-                        rs.sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &response);
+                        rs.sendFrame(description.handle, data, &response);
                     }
                    
                 }
