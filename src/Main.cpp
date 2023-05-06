@@ -113,7 +113,8 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema, boo
     //Change the below line to use a smart pointer
 
     schema.schema.engineName = "SpoutRenderStream";
-    schema.schema.engineVersion = "1.30";
+    schema.schema.engineVersion = "2.0";
+    schema.schema.pluginVersion = "2.0x"
     schema.schema.info = "";
 
 
@@ -687,6 +688,7 @@ int main(int argc, char* argv[])
 
                         FrameResponseData response = {};
                         response.cameraData = &cameraData;
+                        response.schemaHash = scene.hash;
 
                         // Send the frame to renderstream
                         // I would hope this would generate some form of error, but it doesn't.
