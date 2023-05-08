@@ -113,8 +113,9 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema, boo
     //Change the below line to use a smart pointer
 
     schema.schema.engineName = "SpoutRenderStream";
-    schema.schema.engineVersion = "1.30";
+    schema.schema.engineVersion = "1.8";
     schema.schema.info = "";
+    schema.schema.pluginVersion = "2.0";
 
 
     
@@ -253,8 +254,8 @@ void generateGlTexture(RenderTarget& target, const int width, const int height, 
 
 int main(int argc, char* argv[])
 {
-   //  while (!::IsDebuggerPresent())
-    //    ::Sleep(100);
+    while (!::IsDebuggerPresent())
+        ::Sleep(100);
 
 
   // Setup argpraeser
@@ -448,9 +449,13 @@ int main(int argc, char* argv[])
     {
         // Loading a schema from disk is useful if some parts of it cannot be generated during runtime (ie. it is exported from an editor) 
         // or if you want it to be user-editable
+
+        //Commenting this fixes the crash in RS2.0, I'm unsure why at the moment.
+        /*
         const Schema* importedSchema = rs.loadSchema(argv[0]);
         if (importedSchema && importedSchema->scenes.nScenes > 0)
             std::printf("A schema existed on disk");
+         */
     }
 
 
@@ -602,12 +607,12 @@ int main(int argc, char* argv[])
                     SpoutIncomingWidth = image.width;
                     SpoutIncomingHeight = image.height;
                 }
-
-                SenderFrameTypeData Idata;
+                SenderFrame Idata;
+                Idata.type = RS_FRAMETYPE_OPENGL_TEXTURE;
 
                 Idata.gl.texture = SpoutIncomingTarget.texture;
 
-                rs.getFrameImage(image.imageId, RS_FRAMETYPE_OPENGL_TEXTURE, Idata);
+                rs.getFrameImage(image.imageId, Idata);
 
                 //Ideally thise should operate in a separate thread.
 
@@ -680,7 +685,8 @@ int main(int argc, char* argv[])
 
                         //glFinish();
 
-                        SenderFrameTypeData data;
+                        SenderFrame data;
+                        data.type = RS_FRAMETYPE_OPENGL_TEXTURE;
                         data.gl.texture = target.texture;
 
                         FrameResponseData response = {};
@@ -688,7 +694,7 @@ int main(int argc, char* argv[])
 
                         // Send the frame to renderstream
                         // I would hope this would generate some form of error, but it doesn't.
-                        rs.sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &response);
+                        rs.sendFrame(description.handle, data, response);
                     }
                    
                 }
