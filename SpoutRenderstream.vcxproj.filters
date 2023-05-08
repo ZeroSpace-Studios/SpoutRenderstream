@@ -32,8 +32,5 @@
     <ClInclude Include="includes\renderstream.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="includes\renderdoc_app.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>
