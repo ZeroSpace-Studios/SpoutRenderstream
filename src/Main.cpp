@@ -116,13 +116,13 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema, boo
     schema.schema.engineVersion = _strdup("1.8");
     schema.schema.info = _strdup("");
     schema.schema.pluginVersion = _strdup("2.0");
-
+    /*
     std::vector<const char*> channels;
     channels.push_back("Default");
-
+    
 	schema.schema.channels.nChannels = channels.size();
     schema.schema.channels.channels = channels.data();
-    
+    */
     if (!genOutputs) {
         schema.schema.scenes.nScenes = 1;
         schema.schema.scenes.scenes = static_cast<RemoteParameters*>(
