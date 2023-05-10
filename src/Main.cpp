@@ -112,12 +112,16 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema, boo
    
     //Change the below line to use a smart pointer
 
-    schema.schema.engineName = "SpoutRenderStream";
-    schema.schema.engineVersion = "1.8";
-    schema.schema.info = "";
-    schema.schema.pluginVersion = "2.0";
+    schema.schema.engineName = _strdup("SpoutRenderStream");
+    schema.schema.engineVersion = _strdup("1.8");
+    schema.schema.info = _strdup("");
+    schema.schema.pluginVersion = _strdup("2.0");
 
+    std::vector<const char*> channels;
+    channels.push_back("Default");
 
+	schema.schema.channels.nChannels = channels.size();
+    schema.schema.channels.channels = channels.data();
     
     if (!genOutputs) {
         schema.schema.scenes.nScenes = 1;
@@ -451,11 +455,11 @@ int main(int argc, char* argv[])
         // or if you want it to be user-editable
 
         //Commenting this fixes the crash in RS2.0, I'm unsure why at the moment.
-        /*
+        
         const Schema* importedSchema = rs.loadSchema(argv[0]);
         if (importedSchema && importedSchema->scenes.nScenes > 0)
             std::printf("A schema existed on disk");
-         */
+        
     }
 
 
