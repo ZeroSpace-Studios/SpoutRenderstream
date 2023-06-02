@@ -22,7 +22,7 @@ Useful for
   
   
 ## Installation:
-1. Download the release Zip (R24 or below) from [here](https://github.com/ZeroSpace-Studios/SpoutRenderstream/releases/download/v1.7/ZeroSpaceSpoutBridge.zip). R25 and above [here] (https://github.com/ZeroSpace-Studios/SpoutRenderstream/releases/download/v1.7_RS2/ZeroSpaceSpoutBridge.zip)
+1. Download the release Zip (R24 or below) from [here](https://github.com/ZeroSpace-Studios/SpoutRenderstream/releases/download/v1.7/ZeroSpaceSpoutBridge.zip). R25 and above [here](https://github.com/ZeroSpace-Studios/SpoutRenderstream/releases/download/v1.7_RS2/ZeroSpaceSpoutBridge.zip)
 3. Decompress the folder.
 4. Add it to your RenderStream Projects folder.
 5. Add a new workload in disguise.
