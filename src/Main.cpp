@@ -117,11 +117,11 @@ void generateSchema(std::vector<std::string> &senders, ScopedSchema& schema, boo
     schema.schema.info = _strdup("");
     schema.schema.pluginVersion = _strdup("2.0");
 
-    std::vector<const char*> channels;
-    channels.push_back("Default");
+    // std::vector<const char*> channels;
+    // channels.push_back("Default");
 
-	schema.schema.channels.nChannels = channels.size();
-    schema.schema.channels.channels = channels.data();
+	// schema.schema.channels.nChannels = channels.size();
+    // schema.schema.channels.channels = channels.data();
     
     if (!genOutputs) {
         schema.schema.scenes.nScenes = 1;
@@ -258,8 +258,8 @@ void generateGlTexture(RenderTarget& target, const int width, const int height, 
 
 int main(int argc, char* argv[])
 {
-    while (!::IsDebuggerPresent())
-        ::Sleep(100);
+   // while (!::IsDebuggerPresent())
+   //     ::Sleep(100);
 
 
   // Setup argpraeser
