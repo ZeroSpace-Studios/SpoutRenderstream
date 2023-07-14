@@ -258,8 +258,8 @@ void generateGlTexture(RenderTarget& target, const int width, const int height, 
 
 int main(int argc, char* argv[])
 {
-   // while (!::IsDebuggerPresent())
-   //     ::Sleep(100);
+    while (!::IsDebuggerPresent())
+        ::Sleep(100);
 
 
   // Setup argpraeser
