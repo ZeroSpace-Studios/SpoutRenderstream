@@ -84,16 +84,28 @@ jobs:
     - name: Generate PDF
       run: npm install -g md-to-pdf && cat README.md | md-to-pdf > Instructions.pdf && cp Instructions.pdf ./upload/
     - name: rename
-      run: mv ./upload ./ZeroSpaceSpoutBridge
+      run: mv ./upload "./ZeroSpaceSpoutBridge-${{github.ref_name}}"
     - name: compress folder
-      run: zip -r ./ZeroSpaceSpoutBridge.zip ./ZeroSpaceSpoutBridge
-    - name: upload windows
+      run: zip -r "./ZeroSpaceSpoutBridge-${{github.ref_name}}.zip" "./ZeroSpaceSpoutBridge-${{github.ref_name}}"
+    - name: Upload Windows
       id: upload-windows
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./ZeroSpaceSpoutBridge.zip
-        asset_name: ZeroSpaceSpoutBridge.zip
+        asset_path: "./ZeroSpaceSpoutBridge-${{github.ref_name}}.zip"
+        asset_name: "ZeroSpaceSpoutBridge-${{github.ref_name}}.zip"
         asset_content_type: application/zip
+    - name: Make Upload Directory
+      run: >
+        mkdir -p "${{github.ref_name}}" &&
+        cp -r "./ZeroSpaceSpoutBridge-${{github.ref_name}}.zip" "${{github.ref_name}}/"
+    - name: Upload To Drive
+      uses: adityak74/google-drive-upload-git-action@v0.3
+      with:
+          credentials: ${{ secrets.DRIVE_CREDENTIALS }}
+          filename: "${{github.ref_name}}/ZeroSpaceSpoutBridge-${{github.ref_name}}.zip"
+          folderId: ${{ secrets.FOLDER_ID }}
+          overwrite: "false"
+          mirrorDirectoryStructure: "true"
